@@ -1,0 +1,44 @@
+import {v2 as cloudinary} from "cloudinary"
+import { ApiError } from "./ApiError.js"
+import dotenv from "dotenv"
+dotenv.config({
+    path:"./.env"
+})
+
+cloudinary.config({
+    cloud_name:process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:process.env.CLOUDINARY_API_KEY,
+    api_secret:process.env.CLOUDINARY_API_SECRET
+})
+
+const uploadOnCloudinary = async (fileBuffer) => {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      { folder: "gym" },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    ).end(fileBuffer);
+  });
+};
+
+
+const deleteFromCloudinary = async(filePath) => {
+    try {
+        if (!filePath) {
+            throw new ApiError(400,"file wasn't able to found")
+        }
+        const deleteFCloud = await cloudinary.uploader.destroy(filePath,{
+            resource_type:"image"
+        })
+        if (!deleteFCloud) {
+            throw new ApiError(500,"wasn't abel to delete that particular file form cloud")
+        }
+        return deleteFCloud
+    } catch (error) {
+        throw new ApiError(500,error.message || `got error while deleting file from cloudinary`)
+    }
+}
+
+export {uploadOnCloudinary,deleteFromCloudinary}

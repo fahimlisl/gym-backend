@@ -4,6 +4,7 @@ import cors from "cors";
 import morgan from "morgan";
 
 
+
 const app = express();
 
 app.use(cors({
@@ -16,6 +17,15 @@ app.use(express.urlencoded({limit:"16kb",extended:true}))
 app.use(express.json({limit:"16kb"}))
 app.use(express.static("public"))
 app.use(cookieParser());
+
+
+import adminRouter from "./routes/admin.routes.js"
+import userRouter from "./routes/user.routes.js"
+
+// routes
+
+app.use("/api/v1/admin",adminRouter)
+app.use("/api/v1/user",userRouter)
 
 
 export default app
