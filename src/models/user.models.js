@@ -7,7 +7,6 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: true,
-      unique: true,
     },
     email: {
       type: String,
@@ -22,8 +21,14 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     avatar:{
-      type:String,
-      required:true
+      url:{
+        type:String,
+        required:true
+      },
+      public_id:{
+        type:String,
+        required:true
+      }
     },
     subscription:{
         type: Schema.Types.ObjectId,

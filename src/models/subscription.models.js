@@ -1,19 +1,14 @@
 import mongoose, { Schema } from "mongoose";
 
-
-const subscriptionSchema = new mongoose.Schema({
-    user:{
-        type: Schema.Types.ObjectId,
-        ref:"User",
-        required:true
-    },
+const subsSchema = new mongoose.Schema(
+  {
     plan: {
       type: String,
       enum: ["monthly", "quarterly", "half-yearly", "yearly"],
       required: true,
     },
-    price:{
-        type:Number
+    price: {
+      type: Number,
     },
     startDate: {
       type: Date,
@@ -37,7 +32,22 @@ const subscriptionSchema = new mongoose.Schema({
       enum: ["paid", "pending"],
       default: "paid",
     },
-},{timestamps:true})
+  },
+  {}
+);
 
+const subscriptionSchema = new mongoose.Schema(
+  {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    subscription:{
+      type:[subsSchema]
+    }
+  },
+  { timestamps: true }
+);
 
-export const Subscription = mongoose.model("Subscription",subscriptionSchema)
+export const Subscription = mongoose.model("Subscription", subscriptionSchema);
