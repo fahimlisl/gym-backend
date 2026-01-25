@@ -22,12 +22,14 @@ app.use(cookieParser());
 import adminRouter from "./routes/admin.routes.js"
 import userRouter from "./routes/user.routes.js"
 import generalRouter from "./routes/general.routes.js"
+import trainerRouter from "./routes/trainer.routes.js"
 
 // routes
 
 app.use("/api/v1/admin",adminRouter)
 app.use("/api/v1/user",userRouter)
 app.use("/api/v1/general",generalRouter)
+app.use("/api/v1/trainer",trainerRouter)
 
 
 export default app

@@ -2,10 +2,12 @@ import jwt from "jsonwebtoken"
 import { Admin } from "../models/admin.models.js"
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.models.js"
+import { Trainer } from "../models/trainer.models.js"
 
 const roleMap = {
     admin: Admin,
-    user : User
+    user : User,
+    trainer: Trainer
 }
 
 export const verifyJWT = async(req,_,next) => {

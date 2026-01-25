@@ -1,6 +1,7 @@
 import { ApiError } from "./ApiError.js";
 import { Admin } from "../models/admin.models.js";
 import { User } from "../models/user.models.js";
+import { Trainer } from "../models/trainer.models.js";
 
 const generateAccessAndRefreshToken = async (userId, Model) => {
   try {
