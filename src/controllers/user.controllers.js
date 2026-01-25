@@ -10,6 +10,8 @@ import {
 } from "../utils/cloudinary.js";
 import { Subscription } from "../models/subscription.models.js";
 import { Transaction } from "../models/transaction.models.js";
+import { Ptbill } from "../models/ptbill.models.js";
+import { Trainer } from "../models/trainer.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
@@ -346,6 +348,115 @@ const editUser = asyncHandler(async (req, res) => {
   );
 });
 
+// will add a lil changes for fetching when users count is 0
+const fetchAllUser = asyncHandler(async(req,res) => {
+  const users = await User.find({});
+  if(!users) {
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {},
+        "currently no members are admitted yet"
+      )
+    )
+  }else{
+    return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      users,
+      "successfully fetched all members"
+    )
+  )}
+})
+
+const fetchParticularUser = asyncHandler(async(req,res) => {
+  const user = await User.findById(req.params.id);
+  if(!user) throw new ApiError(400,"user wasn't able to found")
+  
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user,
+        "member of the particular id been successflly fetched"
+      )
+    )
+})
+
+const assignPT = asyncHandler(async(req,res) => { // Pt stands for personal training
+  const userId = req.params.member_id;
+  const trainerId = req.params.trainer_id;
+  await User.findById(userId);
+  const {plan,price,startDate,status,paymentMethod} = req.body;
+  // stauts will be evaluated via backend
+  if(!(plan || price)) throw new ApiError(400,"planType and price must required")
+
+  
+  const start = parseDDMMYYYY(startDate);
+
+  let monthsToAdd = 0;
+  if (plan === "monthly") monthsToAdd = 1;
+  else if (plan === "quarterly") monthsToAdd = 3;
+  else if (plan === "half-yearly") monthsToAdd = 6;
+  else if (plan === "yearly") monthsToAdd = 12;
+  else throw new ApiError(400, "Invalid plan");
+
+  const endDate = addMonthsSafe(start, monthsToAdd);
+  
+  const pt = await Ptbill.create({
+    plan,
+    price,
+    status:status || "active",
+    startDate:start,
+    endDate:endDate,
+    user:userId,
+    trainer:trainerId
+  })
+  if(!pt){
+    throw new ApiError(500,"internal server error, wasn't able to careate pt docuemtn")
+  }
+
+  const addM = await Trainer.findByIdAndUpdate(trainerId,
+    {
+      $addToSet:{
+        students:{student:userId}
+      }
+    },
+    {
+      new:true
+    }
+  )
+  if(!addM){
+    // add some deletion if faield
+    throw new ApiError(400,"wasn't able to update trainer document")
+  }
+
+  await Transaction.create({
+    user:userId,
+    source:"personal-training",
+    referenceId:pt._id,
+    amount:price,
+    paymentMethod:paymentMethod || "cash",
+    status:"success"
+  })
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      pt,
+      "successfully added personal traning"
+    )
+  )
+
+})
+
 
 export {
   registerUser,
@@ -353,5 +464,8 @@ export {
   loginUser,
   destroyUser,
   renewalSubscription,
-  editUser
+  editUser,
+  fetchAllUser,
+  fetchParticularUser,
+  assignPT
 };

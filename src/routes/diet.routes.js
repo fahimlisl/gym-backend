@@ -9,7 +9,7 @@ import { isAdmin } from "../middlewares/isAdmin.middleware.js";
 
 const router = Router();
 
-// Trainer / Admin
+// will be handeled accordingly after conformation
 router.post("/diet/generate", verifyJWT, 
     // isAdmin,
      generateDiet);

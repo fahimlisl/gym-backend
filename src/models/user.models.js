@@ -30,13 +30,17 @@ const userSchema = new mongoose.Schema(
         required:true
       }
     },
+    personalTraning:{
+      type:Schema.Types.ObjectId,
+      ref:"ptbill"
+    },
     subscription:{
         type: Schema.Types.ObjectId,
         ref:"Subscription"
     },
     refreshToken: {
       type: String,
-    },
+  },
   },
   { timestamps: true }
 );

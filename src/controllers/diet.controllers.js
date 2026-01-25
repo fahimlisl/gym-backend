@@ -5,11 +5,8 @@ import { generateDietViaAI } from "../service/ai.service.js";
 
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import {asyncHandler} from "../utils/asyncHandler.js";
+import {asyncHandler} from "../utils/AsyncHandler.js";
 
-/**
- * TRAINER → GENERATE DIET (AI)
- */
 export const generateDiet = asyncHandler(async (req, res) => {
   const {
     userId,
@@ -51,9 +48,7 @@ export const generateDiet = asyncHandler(async (req, res) => {
   );
 });
 
-/**
- * TRAINER → APPROVE DIET
- */
+// diet approval
 export const approveDiet = asyncHandler(async (req, res) => {
   const { dietId } = req.params;
 
@@ -72,9 +67,7 @@ export const approveDiet = asyncHandler(async (req, res) => {
   );
 });
 
-/**
- * USER → GET APPROVED DIET
- */
+
 export const getMyDiet = asyncHandler(async (req, res) => {
   const diet = await Diet.findOne({
     user: req.user._id,

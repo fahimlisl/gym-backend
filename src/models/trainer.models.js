@@ -24,10 +24,6 @@ const trainerSchema = new mongoose.Schema({
     refreshToken:{
         type:String
     },
-    // avatar:{
-    //     type:String,
-    //     required:true
-    // },
     avatar:{
         url:{
             type:String,

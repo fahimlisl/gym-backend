@@ -10,7 +10,7 @@ const dietSchema = new mongoose.Schema(
 
     trainer: {
       type: Schema.Types.ObjectId,
-      ref: "Trainer", // or Trainer (be consistent)
+      ref: "Trainer", 
       required: true,
     },
 
@@ -37,7 +37,7 @@ const dietSchema = new mongoose.Schema(
     },
 
     plan: {
-      type: Object, // AI JSON
+      type: Object,
       required: true,
     },
 
