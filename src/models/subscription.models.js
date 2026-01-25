@@ -18,7 +18,7 @@ const subsSchema = new mongoose.Schema(
 
     endDate: {
       type: Date,
-      required: true, // will be auto claculated
+      required: true,
     },
 
     status: {
@@ -45,7 +45,11 @@ const subscriptionSchema = new mongoose.Schema(
     },
     subscription:{
       type:[subsSchema]
-    }
+    },
+    admissionFee:{  // keeping it as per now will change according to instructions
+      type:Number,
+      required:true
+    },
   },
   { timestamps: true }
 );

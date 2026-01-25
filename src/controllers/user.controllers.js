@@ -9,10 +9,11 @@ import {
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
 import { Subscription } from "../models/subscription.models.js";
+import { Transaction } from "../models/transaction.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
-  const { plan, paymentStatus, price } = req.body; // will think whather will access to payment Status
+  const { plan, paymentStatus, price, admissionFee ,paymentMethod} = req.body; // will think whather will access to payment Status
   // pricing will be auto completed via backend ,once gets confirmed
 
   if (!(plan && price)) {
@@ -81,11 +82,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const subscription = await Subscription.create({
     user: user._id,
-    // plan,
-    // price,
-    // startDate: new Date(),
-    // paymentStatus,
-    // endDate: currentDate
+    admissionFee,
     subscription: [subPayLoad],
   });
 
@@ -117,6 +114,22 @@ const registerUser = asyncHandler(async (req, res) => {
       "wasn't able to update the id for subscriotion in user document"
     );
   }
+
+    const transaction = await Transaction.create({
+    user: user._id,
+    source: "subscription",
+    // referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
+    referenceId:subscription.subscription[subscription.subscription.length - 1 ]._id,
+    amount: (parseInt(price) + parseInt(admissionFee)),
+    paymentMethod: paymentMethod || "cash",
+  });
+
+  if(!transaction) {
+    await User.findByIdAndDelete(user._id);
+    await Subscription.findByIdAndDelete(subscription._id);
+    throw new ApiError(400,"wasn't able to create transation record")
+  }
+
 
   return res.status(200).json(
     new ApiResponse(
@@ -198,12 +211,10 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   const userId = req.params.id;
   const user = await User.findById(userId);
   if (!user) throw new ApiError(400, "member wasn't abel to found");
-  const { plan, paymentStatus, price, startDate } = req.body;
+  const { plan, paymentStatus, price, startDate, paymentMethod } = req.body;
   if (!(plan && paymentStatus && price)) {
     throw new ApiError(400, "plan price and payment status must required");
   }
-
-
 
   let currentDate = new Date();
   // needs modificiont here to change  wheather if user wantes to give fee earlier
@@ -218,38 +229,57 @@ const renewalSubscription = asyncHandler(async (req, res) => {
     currentDate.setMonth(currentDate.getMonth() + 12);
   }
 
-  const renewal = await Subscription.findByIdAndUpdate(user.subscription, {
-    $push: {
-      subscription: [
-        {
-          plan,
-          price,
-          startDate: startDate || new Date(),
-          status: "active",
-          paymentStatus: paymentStatus || "paid",
-          endDate: currentDate,
-        },
-      ],
+  const renewal = await Subscription.findByIdAndUpdate(
+    user.subscription,
+    {
+      $push: {
+        subscription: [
+          {
+            plan,
+            price,
+            startDate: startDate || new Date(),
+            status: "active",
+            paymentStatus: paymentStatus || "paid",
+            endDate: currentDate,
+          },
+        ],
+      },
     },
-  },
-  {
-    new:true
-  }
-);
+    {
+      new: true,
+    }
+  );
 
-  if(!renewal){
-    throw new ApiError(400,"failed to renew subscription")
+  if (!renewal) {
+    throw new ApiError(400, "failed to renew subscription");
+  }
+
+  const transaction = await Transaction.create({
+    user: user._id,
+    source: "subscription",
+    referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
+    amount: price,
+    paymentMethod: paymentMethod || "cash",
+  });
+
+  if (!transaction) {
+    await Subscription.findByIdAndUpdate(renewal._id,
+        {
+            $pop : { subscription : 1 }
+        }
+    );
+    throw new ApiError(400, "failed to generated transaction");
   }
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-        200,
-        renewal,
-        "renewal is done successfully"
-    )
-  )
+    .status(200)
+    .json(new ApiResponse(200, renewal, "renewal is done successfully"));
 });
 
-export { registerUser, logOutUser, loginUser, destroyUser ,renewalSubscription };
+export {
+  registerUser,
+  logOutUser,
+  loginUser,
+  destroyUser,
+  renewalSubscription,
+};
