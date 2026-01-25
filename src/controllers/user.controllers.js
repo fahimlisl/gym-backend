@@ -13,7 +13,7 @@ import { Transaction } from "../models/transaction.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
-  const { plan, paymentStatus, price, admissionFee ,paymentMethod} = req.body; // will think whather will access to payment Status
+  const { plan, paymentStatus, price, admissionFee, paymentMethod } = req.body; // will think whather will access to payment Status
   // pricing will be auto completed via backend ,once gets confirmed
 
   if (!(plan && price)) {
@@ -115,21 +115,21 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-    const transaction = await Transaction.create({
+  const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
     // referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
-    referenceId:subscription.subscription[subscription.subscription.length - 1 ]._id,
-    amount: (parseInt(price) + parseInt(admissionFee)),
+    referenceId:
+      subscription.subscription[subscription.subscription.length - 1]._id,
+    amount: parseInt(price) + parseInt(admissionFee),
     paymentMethod: paymentMethod || "cash",
   });
 
-  if(!transaction) {
+  if (!transaction) {
     await User.findByIdAndDelete(user._id);
     await Subscription.findByIdAndDelete(subscription._id);
-    throw new ApiError(400,"wasn't able to create transation record")
+    throw new ApiError(400, "wasn't able to create transation record");
   }
-
 
   return res.status(200).json(
     new ApiResponse(
@@ -207,74 +207,145 @@ const destroyUser = asyncHandler(async (req, res) => {
     );
 });
 
+
+const parseDDMMYYYY = (value) => {
+  if (!value) return new Date();
+
+  if (value instanceof Date) return value;
+
+  const [day, month, year] = value.split("/").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const addMonthsSafe = (date, months) => {
+  const d = new Date(date);
+  const day = d.getDate();
+
+  d.setMonth(d.getMonth() + months);
+
+  // handle month overflow (31st → Feb etc.)
+  if (d.getDate() !== day) {
+    d.setDate(0);
+  }
+
+  return d;
+};
+
 const renewalSubscription = asyncHandler(async (req, res) => {
   const userId = req.params.id;
+
   const user = await User.findById(userId);
-  if (!user) throw new ApiError(400, "member wasn't abel to found");
-  const { plan, paymentStatus, price, startDate, paymentMethod } = req.body;
-  if (!(plan && paymentStatus && price)) {
-    throw new ApiError(400, "plan price and payment status must required");
-  }
+  if (!user) throw new ApiError(404, "Member not found");
 
-  let currentDate = new Date();
-  // needs modificiont here to change  wheather if user wantes to give fee earlier
+  const {
+    plan,
+    paymentStatus,
+    price,
+    startDate,
+    paymentMethod,
+  } = req.body;
 
-  if (plan === "monthly") {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  } else if (plan === "quarterly") {
-    currentDate.setMonth(currentDate.getMonth() + 3);
-  } else if (plan === "half-yearly") {
-    currentDate.setMonth(currentDate.getMonth() + 6);
-  } else if (plan === "yearly") {
-    currentDate.setMonth(currentDate.getMonth() + 12);
+  if (!plan || !price) {
+    throw new ApiError(400, "Plan and price are required");
   }
+  const start = parseDDMMYYYY(startDate);
+
+  let monthsToAdd = 0;
+  if (plan === "monthly") monthsToAdd = 1;
+  else if (plan === "quarterly") monthsToAdd = 3;
+  else if (plan === "half-yearly") monthsToAdd = 6;
+  else if (plan === "yearly") monthsToAdd = 12;
+  else throw new ApiError(400, "Invalid plan");
+
+  const endDate = addMonthsSafe(start, monthsToAdd);
 
   const renewal = await Subscription.findByIdAndUpdate(
     user.subscription,
     {
       $push: {
-        subscription: [
-          {
-            plan,
-            price,
-            startDate: startDate || new Date(),
-            status: "active",
-            paymentStatus: paymentStatus || "paid",
-            endDate: currentDate,
-          },
-        ],
+        subscription: {
+          plan,
+          price,
+          startDate: start,
+          endDate,
+          status: "active",
+          paymentStatus: paymentStatus || "paid",
+        },
       },
     },
-    {
-      new: true,
-    }
+    { new: true }
   );
 
   if (!renewal) {
-    throw new ApiError(400, "failed to renew subscription");
+    throw new ApiError(400, "Failed to renew subscription");
   }
+  const latestSub = renewal.subscription[renewal.subscription.length - 1];
 
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
-    referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
+    referenceId: latestSub._id,
     amount: price,
     paymentMethod: paymentMethod || "cash",
   });
 
   if (!transaction) {
-    await Subscription.findByIdAndUpdate(renewal._id,
-        {
-            $pop : { subscription : 1 }
-        }
-    );
-    throw new ApiError(400, "failed to generated transaction");
+    await Subscription.findByIdAndUpdate(renewal._id, {
+      $pop: { subscription: 1 },
+    });
+
+    throw new ApiError(400, "Failed to generate transaction");
   }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, renewal, "renewal is done successfully"));
+    .json(new ApiResponse(200, renewal, "Renewal completed successfully"));
 });
+
+const editUser = asyncHandler(async (req, res) => {
+  const { username, email, phoneNumber } = req.body;
+  const userId = req.params.id;
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  const updateData = {
+    username: username ?? user.username,
+    phoneNumber: phoneNumber ?? user.phoneNumber,
+
+    email: email ?? user.email ?? "",
+  };
+
+  if (req.file?.buffer) {
+    if (user.avatar?.public_id) {
+      await deleteFromCloudinary(user.avatar.public_id);
+    }
+
+    const avatarf = await uploadOnCloudinary(req.file.buffer);
+
+    updateData.avatar = {
+      url: avatarf.url,
+      public_id: avatarf.public_id,
+    };
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $set: updateData },
+    { new: true }
+  );
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200, 
+      updatedUser, 
+      "User updated successfully")
+  );
+});
+
 
 export {
   registerUser,
@@ -282,4 +353,5 @@ export {
   loginUser,
   destroyUser,
   renewalSubscription,
+  editUser
 };

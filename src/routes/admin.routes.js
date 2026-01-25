@@ -5,7 +5,7 @@ import { addSupplement, destroySupplement, editSupplement, fetchAllSupp, fetchPa
 import { upload } from "../middlewares/multer.middlewares.js";
 import { isAdmin } from "../middlewares/isAdmin.middlewares.js";
 import { destroyTrainer, editTrainer, fetchAllTrainer, fetchParticularTrainer, registerTrainer } from "../controllers/trainer.controllers.js";
-import { destroyUser, registerUser, renewalSubscription } from "../controllers/user.controllers.js";
+import { destroyUser, editUser, registerUser, renewalSubscription } from "../controllers/user.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin)
@@ -16,6 +16,8 @@ router.route("/logout").post(verifyJWT,logOutAdmin)
 router.route("/registerUser").post(upload.single("avatar"),verifyJWT,isAdmin,registerUser)
 router.route("/destroy-user/:id").delete(verifyJWT,isAdmin,destroyUser)
 router.route("/renewalSubscription/:id").patch(verifyJWT,isAdmin,renewalSubscription)
+
+router.route("/edit-user/:id").patch(upload.single("avatar"),verifyJWT,isAdmin,editUser) 
 
 
 // supplement
