@@ -44,6 +44,10 @@ const supplementSchema = new mongoose.Schema(
         url: {
           type: String,
         },
+        public_id: {
+          type: String,
+          required: true,
+        },
         isThumbnail: {
           type: Boolean,
           default: false,

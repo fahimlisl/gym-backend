@@ -20,6 +20,7 @@ export const verifyJWT = async(req,_,next) => {
         const user = await Model.findById(decodedToken?._id).select("-password -refreshToken");
         if(!user) throw new ApiError(402,"something went wrong while finding user , via verify JWT thing");
         req.user = user;
+        req.role = decodedToken.role; 
         next()
     } catch (error) {
         console.log(`log of error ${error}`)

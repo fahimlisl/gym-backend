@@ -17,7 +17,10 @@ const uploadOnCloudinary = async (fileBuffer) => {
       { folder: "gym" },
       (error, result) => {
         if (error) return reject(error);
-        resolve(result);
+        resolve({
+          url: result.secure_url,
+          public_id: result.public_id,
+        });
       }
     ).end(fileBuffer);
   });
