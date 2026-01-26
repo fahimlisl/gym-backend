@@ -20,27 +20,31 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    avatar:{
-      url:{
-        type:String,
-        required:true
+    avatar: {
+      url: {
+        type: String,
+        required: true,
       },
-      public_id:{
-        type:String,
-        required:true
-      }
+      public_id: {
+        type: String,
+        required: true,
+      },
     },
-    personalTraning:{
-      type:Schema.Types.ObjectId,
-      ref:"ptbill"
+    personalTraning: {
+      type: Schema.Types.ObjectId,
+      ref: "ptbill",
     },
-    subscription:{
-        type: Schema.Types.ObjectId,
-        ref:"Subscription"
+    subscription: {
+      type: Schema.Types.ObjectId,
+      ref: "Subscription",
     },
     refreshToken: {
       type: String,
-  },
+    },
+    diet:{
+      type: Schema.Types.ObjectId,
+      ref:"Diet"
+    }
   },
   { timestamps: true }
 );
@@ -60,7 +64,7 @@ userSchema.methods.generateAccessToken = async function () {
     {
       _id: this._id,
       email: this.email,
-      role:"user"
+      role: "user",
     },
     process.env.ACCESS_TOKEN_SECRET,
     {

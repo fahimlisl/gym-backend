@@ -6,10 +6,12 @@ import { generateDietViaAI } from "../service/ai.service.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import {asyncHandler} from "../utils/AsyncHandler.js";
+import { User } from "../models/user.models.js";
 
 export const generateDiet = asyncHandler(async (req, res) => {
+  const userId = req.params.id;
   const {
-    userId,
+    // userId,
     goal,
     dietType,
     mealsPerDay = 5,
@@ -42,6 +44,22 @@ export const generateDiet = asyncHandler(async (req, res) => {
     generatedBy: "ai",
     status: "draft",
   });
+
+  const additionOfDietId = await User.findByIdAndUpdate(userId,
+    {
+      $set:{
+        diet:diet._id
+      }
+    },
+    {
+      new:true
+    }
+  )
+
+  if(!additionOfDietId) {
+    // will add some deletation
+    throw new ApiError(400,"failed to add generated diet id to user document")
+  }
 
   res.status(201).json(
     new ApiResponse(201, diet, "Diet generated (draft)")
