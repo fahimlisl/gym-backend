@@ -1,13 +1,7 @@
 import mongoose,{Schema} from "mongoose";
-// needs modificaition here , as like storing it inside an array for pushing , whenever needs to renew personal traninng
-const ptillSchema = new mongoose.Schema({
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
 
-    trainer: {
+const regularSchema = new mongoose.Schema({
+  trainer: {
       type: Schema.Types.ObjectId,
       ref: "Trainer",
       required: true,
@@ -39,6 +33,18 @@ const ptillSchema = new mongoose.Schema({
       type: Number,
       required: true,
     },
+},{timestamps:true})
+
+const ptillSchema = new mongoose.Schema({
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    subscription:{
+      type:[regularSchema]
+    }
+    
   },
   { timestamps: true }
 );

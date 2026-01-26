@@ -209,7 +209,6 @@ const destroyUser = asyncHandler(async (req, res) => {
     );
 });
 
-
 const parseDDMMYYYY = (value) => {
   if (!value) return new Date();
 
@@ -239,13 +238,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "Member not found");
 
-  const {
-    plan,
-    paymentStatus,
-    price,
-    startDate,
-    paymentMethod,
-  } = req.body;
+  const { plan, paymentStatus, price, startDate, paymentMethod } = req.body;
 
   if (!plan || !price) {
     throw new ApiError(400, "Plan and price are required");
@@ -339,45 +332,29 @@ const editUser = asyncHandler(async (req, res) => {
   );
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200, 
-      updatedUser, 
-      "User updated successfully")
-  );
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "User updated successfully"));
 });
 
 // will add a lil changes for fetching when users count is 0
-const fetchAllUser = asyncHandler(async(req,res) => {
+const fetchAllUser = asyncHandler(async (req, res) => {
   const users = await User.find({});
-  if(!users) {
+  if (!users) {
     return res
-    .status(200)
-    .json(
-      new ApiResponse(
-        200,
-        {},
-        "currently no members are admitted yet"
-      )
-    )
-  }else{
+      .status(200)
+      .json(new ApiResponse(200, {}, "currently no members are admitted yet"));
+  } else {
     return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      users,
-      "successfully fetched all members"
-    )
-  )}
-})
+      .status(200)
+      .json(new ApiResponse(200, users, "successfully fetched all members"));
+  }
+});
 
-const fetchParticularUser = asyncHandler(async(req,res) => {
+const fetchParticularUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
-  if(!user) throw new ApiError(400,"user wasn't able to found")
-  
-    return res
+  if (!user) throw new ApiError(400, "user wasn't able to found");
+
+  return res
     .status(200)
     .json(
       new ApiResponse(
@@ -385,18 +362,17 @@ const fetchParticularUser = asyncHandler(async(req,res) => {
         user,
         "member of the particular id been successflly fetched"
       )
-    )
-})
+    );
+});
 
-const assignPT = asyncHandler(async(req,res) => { // Pt stands for personal training
+const assignPT = asyncHandler(async (req, res) => {
   const userId = req.params.member_id;
   const trainerId = req.params.trainer_id;
-  await User.findById(userId);
-  const {plan,price,startDate,status,paymentMethod} = req.body;
+  const { plan, price, startDate, status, paymentMethod } = req.body;
   // stauts will be evaluated via backend
-  if(!(plan || price)) throw new ApiError(400,"planType and price must required")
+  if (!(plan || price))
+    throw new ApiError(400, "planType and price must required");
 
-  
   const start = parseDDMMYYYY(startDate);
 
   let monthsToAdd = 0;
@@ -407,43 +383,150 @@ const assignPT = asyncHandler(async(req,res) => { // Pt stands for personal trai
   else throw new ApiError(400, "Invalid plan");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
-  
+
   const pt = await Ptbill.create({
-    plan,
-    price,
-    status:status || "active",
-    startDate:start,
-    endDate:endDate,
-    user:userId,
-    trainer:trainerId
-  })
-  if(!pt){
-    throw new ApiError(500,"internal server error, wasn't able to careate pt docuemtn")
+    user: userId,
+    subscription: [
+      {
+        plan,
+        price,
+        status: status || "active",
+        startDate: start,
+        endDate: endDate,
+        trainer: trainerId,
+      },
+    ],
+  });
+  if (!pt) {
+    throw new ApiError(
+      500,
+      "internal server error, wasn't able to careate pt docuemtn"
+    );
   }
 
-  const addM = await Trainer.findByIdAndUpdate(trainerId,
+  const addM = await Trainer.findByIdAndUpdate(
+    trainerId,
     {
-      $addToSet:{
-        students:{student:userId}
-      }
+      $addToSet: {
+        students: { student: userId },
+      },
     },
     {
-      new:true
+      new: true,
     }
-  )
-  if(!addM){
+  );
+  if (!addM) {
     // add some deletion if faield
-    throw new ApiError(400,"wasn't able to update trainer document")
+    throw new ApiError(400, "wasn't able to update trainer document");
   }
 
   await Transaction.create({
-    user:userId,
-    source:"personal-training",
-    referenceId:pt._id,
-    amount:price,
-    paymentMethod:paymentMethod || "cash",
-    status:"success"
-  })
+    user: userId,
+    source: "personal-training",
+    referenceId: pt.subscription[pt.subscription.length - 1]._id,
+    amount: price,
+    paymentMethod: paymentMethod || "cash",
+    status: "success",
+  });
+
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        personalTraning: pt._id,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, pt, "successfully added personal traning"));
+});
+
+// thinking to add one more validation , like if the status is active , furuther subscription will not be allowed
+// further renewal will only be allowed if and only if the previous subscription is expired
+// these all will be asked and then implemented after only conformation
+const renewalPtSub = asyncHandler(async (req, res) => {
+  const userId = req.params.member_id;
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(400, "user wasn't able to found out!");
+
+  const trainerId = req.params.trainer_id;
+
+  const { plan, price, startDate, status, paymentMethod } = req.body;
+  // stauts will be evaluated via backend
+  if (!(plan || price))
+    throw new ApiError(400, "planType and price must required");
+
+  const start = parseDDMMYYYY(startDate);
+
+  let monthsToAdd = 0;
+  if (plan === "monthly") monthsToAdd = 1;
+  else if (plan === "quarterly") monthsToAdd = 3;
+  else if (plan === "half-yearly") monthsToAdd = 6;
+  else if (plan === "yearly") monthsToAdd = 12;
+  else throw new ApiError(400, "Invalid plan");
+
+  const endDate = addMonthsSafe(start, monthsToAdd);
+
+  const pt = await Ptbill.findByIdAndUpdate(
+    user.personalTraning,
+    {
+      $push: {
+        subscription: [
+          {
+            plan,
+            price,
+            status: status || "active",
+            startDate: start,
+            endDate: endDate,
+            trainer: trainerId,
+          },
+        ],
+      },
+    },
+    {
+      new: true,
+    }
+  );
+  if (!pt) {
+    throw new ApiError(
+      500,
+      "internal server error, wasn't able to careate pt docuemtn"
+    );
+  }
+
+  // this will be a little critical
+  if(trainerId !== pt.subscription[pt.subscription.length - 1].trainer){
+
+    const addM = await Trainer.findByIdAndUpdate(
+      trainerId,
+      {
+        $addToSet: {
+          students: { student: userId },
+        },
+      },
+      {
+        new: true,
+      }
+    );
+    if (!addM) {
+      // add some deletion if faield
+      throw new ApiError(400, "wasn't able to update trainer document");
+    }
+  }
+
+  await Transaction.create({
+    user: userId,
+    source: "personal-training",
+    referenceId: pt.subscription[pt.subscription.length - 1]._id,
+    amount: price,
+    paymentMethod: paymentMethod || "cash",
+    status: "success",
+  });
 
   return res
   .status(200)
@@ -451,12 +534,11 @@ const assignPT = asyncHandler(async(req,res) => { // Pt stands for personal trai
     new ApiResponse(
       200,
       pt,
-      "successfully added personal traning"
+      "renewall has been done successfully"
     )
   )
 
-})
-
+});
 
 export {
   registerUser,
@@ -467,5 +549,6 @@ export {
   editUser,
   fetchAllUser,
   fetchParticularUser,
-  assignPT
+  assignPT,
+  renewalPtSub
 };
