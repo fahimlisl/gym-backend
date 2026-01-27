@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { loginTrainier, logOutTrainer } from "../controllers/trainer.controllers.js";
+import { fetchAssignedStudents, fetchParticularTrainer, loginTrainier, logOutTrainer } from "../controllers/trainer.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 
 import {
@@ -26,6 +26,9 @@ router.patch("/diet/approve/:dietId", verifyJWT,
 
 // User
 // router.get("/diet/my", verifyJWT, getMyDiet); // gotta put that on user file , after final confoermation 
+
+router.route("/fetchAssignedStudents").get(verifyJWT,isTrainer,fetchAssignedStudents)
+router.route("/fetchSelf").get(verifyJWT,isTrainer,fetchParticularTrainer)
 
 
 

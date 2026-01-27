@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import generateAccessAndRefreshToken from "../utils/generateANR.js";
 import { options } from "../utils/options.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import { User } from "../models/user.models.js";
 
 const registerTrainer = asyncHandler(async (req, res) => {
   const { fullName, email, phoneNumber, password, experience , salary} = req.body;
@@ -229,5 +230,35 @@ const fetchParticularTrainer = asyncHandler(async(req,res) => {
     )
 })
 
+const fetchAssignedStudents = asyncHandler(async(req,res) => {
+  const trainerId = req.user._id;
+  const trainer = await Trainer.findById(trainerId)
+  let stud = []
+  for(let i = 0 ; i <= trainer.students.length - 1 ; i++ ){
+    // if(trainer.students[i].student !== )
+    stud.push(trainer.students[i].student)
+  }
+  let stss = []
+  for(let i = 0 ; i<= trainer.students.length - 1 ; i++){
+
+    const s = await User.findById(stud[i])
+    stss.push(s)
+  }
+
+  // one bug , is that , if one member is gettingmutople subs , gettinig fetch mutipl time , bt not rqrqwueid
+  
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      stss,
+      "successfully fetched all the members"
+    )
+  )
+})
+
+
+
 export {logOutTrainer,loginTrainier,registerTrainer}
-export{editTrainer,destroyTrainer,fetchAllTrainer,fetchParticularTrainer}
+export{editTrainer,destroyTrainer,fetchAllTrainer,fetchParticularTrainer,fetchAssignedStudents}

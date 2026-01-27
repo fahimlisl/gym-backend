@@ -6,6 +6,7 @@ import { upload } from "../middlewares/multer.middlewares.js";
 import { isAdmin } from "../middlewares/isAdmin.middlewares.js";
 import { destroyTrainer, editTrainer, fetchAllTrainer, fetchParticularTrainer, registerTrainer } from "../controllers/trainer.controllers.js";
 import { assignPT, destroyUser, editUser, fetchAllUser, fetchParticularUser, registerUser, renewalPtSub, renewalSubscription } from "../controllers/user.controllers.js";
+import { calculateTotalInLet, fetchAllTransactions } from "../controllers/transaction.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin)
@@ -41,4 +42,9 @@ router.route("/destroy-trainer/:id").delete(verifyJWT,isAdmin,destroyTrainer)
 router.route("/edit-trainer/:id").patch(verifyJWT,isAdmin,editTrainer)
 router.route("/fetchAllTrainer").get(verifyJWT,isAdmin,fetchAllTrainer)
 router.route("/fetchParticularTrainer/:id").get(verifyJWT,isAdmin,fetchParticularTrainer)
+
+
+// transections
+router.route("/fetchAllTransactions").get(verifyJWT,isAdmin,fetchAllTransactions)
+router.route("/calculateTotalInLet").get(verifyJWT,isAdmin,calculateTotalInLet)
 export default router

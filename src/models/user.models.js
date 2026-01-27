@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema(
     },
     personalTraning: {
       type: Schema.Types.ObjectId,
-      ref: "ptbill",
+      ref: "Ptbill",
     },
     subscription: {
       type: Schema.Types.ObjectId,

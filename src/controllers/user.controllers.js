@@ -351,7 +351,17 @@ const fetchAllUser = asyncHandler(async (req, res) => {
 });
 
 const fetchParticularUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id);
+  const user = await User.findById(req.params.id).populate({
+    path: "subscription",
+  })
+  .populate({
+    path: "personalTraning",
+    populate: {
+      path: "subscription.trainer",
+      model: "Trainer",
+      select: "fullName phoneNumber avatar experience",
+    },
+  });;
   if (!user) throw new ApiError(400, "user wasn't able to found");
 
   return res
@@ -540,6 +550,26 @@ const renewalPtSub = asyncHandler(async (req, res) => {
 
 });
 
+const fetchProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .populate("subscription")
+    .populate({
+      path: "personalTraning",
+      populate: {
+        path: "subscription.trainer",
+        model: "Trainer",
+        select: "fullName phoneNumber avatar experience",
+      },
+    });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  return res.status(200).json(
+    new ApiResponse(200, user, "User profile fetched")
+  );
+});
+
+
 export {
   registerUser,
   logOutUser,
@@ -550,5 +580,6 @@ export {
   fetchAllUser,
   fetchParticularUser,
   assignPT,
-  renewalPtSub
+  renewalPtSub,
+  fetchProfile
 };
