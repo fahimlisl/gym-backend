@@ -32,8 +32,16 @@ const subsSchema = new mongoose.Schema(
       enum: ["paid", "pending"],
       default: "paid",
     },
+    discount:{ // there will the two types of discount , 1) percentage wise 2) manual
+      type:Number,
+      default:0
+    },
+    finalAmount:{
+      type:Number,
+      required:true
+    }
   },
-  {}
+  {timestamps:true}
 );
 
 const subscriptionSchema = new mongoose.Schema(
@@ -50,6 +58,12 @@ const subscriptionSchema = new mongoose.Schema(
       type:Number,
       required:true
     },
+    discountOnAdFee:{
+      type:Number
+    },
+    finalAdFee:{
+      type:Number
+    }
   },
   { timestamps: true }
 );

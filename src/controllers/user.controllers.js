@@ -15,7 +15,7 @@ import { Trainer } from "../models/trainer.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
-  const { plan, paymentStatus, price, admissionFee, paymentMethod } = req.body; // will think whather will access to payment Status
+  const { plan, paymentStatus, price, admissionFee, paymentMethod ,discount ,discountOnAdFee} = req.body; // will think whather will access to payment Status
   // pricing will be auto completed via backend ,once gets confirmed
 
   if (!(plan && price)) {
@@ -72,7 +72,14 @@ const registerUser = asyncHandler(async (req, res) => {
   } else if (plan === "yearly") {
     currentDate.setMonth(currentDate.getMonth() + 12);
   }
+  // console.log(typeof parseInt(parseInt(price) - (discount)))
 
+  let safeDiscount = 0 ;
+  if(discount === undefined){
+    safeDiscount = 0
+  }else{
+    safeDiscount === discount
+  }
   const subPayLoad = {
     plan,
     price,
@@ -80,11 +87,21 @@ const registerUser = asyncHandler(async (req, res) => {
     status: "active",
     paymentStatus: paymentStatus || "paid",
     endDate: currentDate,
+    discount:Number(safeDiscount),
+    finalAmount: Number(price) - Number(safeDiscount)
   };
 
+  let safeDiscountOnAdFee = 0;
+  if(discountOnAdFee === undefined){
+    safeDiscountOnAdFee = 0;
+  }else{
+    safeDiscountOnAdFee = discountOnAdFee
+  }
   const subscription = await Subscription.create({
     user: user._id,
     admissionFee,
+    discountOnAdFee: Number(safeDiscountOnAdFee),
+    finalAdFee: Number(admissionFee) - Number(safeDiscountOnAdFee),
     subscription: [subPayLoad],
   });
 
@@ -123,7 +140,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
     referenceId:
       subscription.subscription[subscription.subscription.length - 1]._id,
-    amount: parseInt(price) + parseInt(admissionFee),
+    amount: Number(price) + Number(admissionFee) - Number(safeDiscount) - Number(safeDiscountOnAdFee),
     paymentMethod: paymentMethod || "cash",
   });
 
