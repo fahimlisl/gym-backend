@@ -32,6 +32,12 @@ const subsSchema = new mongoose.Schema(
       enum: ["paid", "pending"],
       default: "paid",
     },
+    discountType:{
+      type:String,
+      enum:["percentage","flat","none"],
+      required:true // will be controllring via forntend  , like if discount is enabling then only give the require thing , 
+      // also need to control the percentage , form 0-100 , via forntend , 
+    },
     discount:{ // there will the two types of discount , 1) percentage wise 2) manual
       type:Number,
       default:0
@@ -57,6 +63,12 @@ const subscriptionSchema = new mongoose.Schema(
     admissionFee:{  // keeping it as per now will change according to instructions
       type:Number,
       required:true
+    },
+    discountTypeOnAdFee:{
+      type:String,
+      enum:["percentage","flat","none"],
+      required:true // will be controllring via forntend  , like if discount is enabling then only give the require thing , 
+      // also need to control the percentage , form 0-100 , via forntend , 
     },
     discountOnAdFee:{
       type:Number

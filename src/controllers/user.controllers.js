@@ -15,7 +15,18 @@ import { Trainer } from "../models/trainer.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
-  const { plan, paymentStatus, price, admissionFee, paymentMethod ,discount ,discountOnAdFee} = req.body; // will think whather will access to payment Status
+  const {
+    plan,
+    paymentStatus,
+    price,
+    admissionFee,
+    paymentMethod,
+    discount,
+    discountOnAdFee,
+    discountType,
+    discountTypeOnAdFee,
+  } = req.body;
+  // will think whather will access to payment Status
   // pricing will be auto completed via backend ,once gets confirmed
 
   if (!(plan && price)) {
@@ -72,14 +83,28 @@ const registerUser = asyncHandler(async (req, res) => {
   } else if (plan === "yearly") {
     currentDate.setMonth(currentDate.getMonth() + 12);
   }
-  // console.log(typeof parseInt(parseInt(price) - (discount)))
 
-  let safeDiscount = 0 ;
-  if(discount === undefined){
-    safeDiscount = 0
-  }else{
-    safeDiscount === discount
+  if (!(discountTypeOnAdFee && discountType)) {
+    await User.findByIdAndDelete(user._id);
+    throw new ApiError(
+      400,
+      "discount type of admission and montly is required"
+    );
   }
+
+  let safeDiscount = 0;
+  if (discountType === "percentage") {
+    safeDiscount = ((price * discount) / 100).toFixed(2); // bt keep in my mind , percentage should must be in between from (0-100)
+  } else if (discountType === "flat") {
+    if (discount === undefined) {
+      safeDiscount = 0;
+    } else {
+      safeDiscount = discount;
+    }
+  } else if(discountType === "none"){
+    safeDiscount = 0;
+  }
+
   const subPayLoad = {
     plan,
     price,
@@ -87,15 +112,22 @@ const registerUser = asyncHandler(async (req, res) => {
     status: "active",
     paymentStatus: paymentStatus || "paid",
     endDate: currentDate,
-    discount:Number(safeDiscount),
-    finalAmount: Number(price) - Number(safeDiscount)
+    discount: Number(safeDiscount),
+    finalAmount: Number(price) - Number(safeDiscount),
+    discountType
   };
 
   let safeDiscountOnAdFee = 0;
-  if(discountOnAdFee === undefined){
+  if(discountTypeOnAdFee === "percentage"){
+    safeDiscountOnAdFee = ((discountOnAdFee * admissionFee)/100).toFixed(2)
+  }else if(safeDiscountOnAdFee === "flat"){
+    if (discountOnAdFee === undefined) {
+      safeDiscountOnAdFee = 0;
+    } else {
+      safeDiscountOnAdFee = discountOnAdFee;
+    }
+  }else if(discountTypeOnAdFee === "none"){
     safeDiscountOnAdFee = 0;
-  }else{
-    safeDiscountOnAdFee = discountOnAdFee
   }
   const subscription = await Subscription.create({
     user: user._id,
@@ -103,6 +135,7 @@ const registerUser = asyncHandler(async (req, res) => {
     discountOnAdFee: Number(safeDiscountOnAdFee),
     finalAdFee: Number(admissionFee) - Number(safeDiscountOnAdFee),
     subscription: [subPayLoad],
+    discountTypeOnAdFee
   });
 
   if (!subscription) {
@@ -140,7 +173,11 @@ const registerUser = asyncHandler(async (req, res) => {
     // referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
     referenceId:
       subscription.subscription[subscription.subscription.length - 1]._id,
-    amount: Number(price) + Number(admissionFee) - Number(safeDiscount) - Number(safeDiscountOnAdFee),
+    amount:
+      Number(price) +
+      Number(admissionFee) -
+      Number(safeDiscount) -
+      Number(safeDiscountOnAdFee),
     paymentMethod: paymentMethod || "cash",
   });
 
@@ -368,17 +405,18 @@ const fetchAllUser = asyncHandler(async (req, res) => {
 });
 
 const fetchParticularUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).populate({
-    path: "subscription",
-  })
-  .populate({
-    path: "personalTraning",
-    populate: {
-      path: "subscription.trainer",
-      model: "Trainer",
-      select: "fullName phoneNumber avatar experience",
-    },
-  });;
+  const user = await User.findById(req.params.id)
+    .populate({
+      path: "subscription",
+    })
+    .populate({
+      path: "personalTraning",
+      populate: {
+        path: "subscription.trainer",
+        model: "Trainer",
+        select: "fullName phoneNumber avatar experience",
+      },
+    });
   if (!user) throw new ApiError(400, "user wasn't able to found");
 
   return res
@@ -527,8 +565,7 @@ const renewalPtSub = asyncHandler(async (req, res) => {
   }
 
   // this will be a little critical
-  if(trainerId !== pt.subscription[pt.subscription.length - 1].trainer){
-
+  if (trainerId !== pt.subscription[pt.subscription.length - 1].trainer) {
     const addM = await Trainer.findByIdAndUpdate(
       trainerId,
       {
@@ -556,15 +593,8 @@ const renewalPtSub = asyncHandler(async (req, res) => {
   });
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      pt,
-      "renewall has been done successfully"
-    )
-  )
-
+    .status(200)
+    .json(new ApiResponse(200, pt, "renewall has been done successfully"));
 });
 
 const fetchProfile = asyncHandler(async (req, res) => {
@@ -581,11 +611,10 @@ const fetchProfile = asyncHandler(async (req, res) => {
 
   if (!user) throw new ApiError(404, "User not found");
 
-  return res.status(200).json(
-    new ApiResponse(200, user, "User profile fetched")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "User profile fetched"));
 });
-
 
 export {
   registerUser,
@@ -598,5 +627,5 @@ export {
   fetchParticularUser,
   assignPT,
   renewalPtSub,
-  fetchProfile
+  fetchProfile,
 };
