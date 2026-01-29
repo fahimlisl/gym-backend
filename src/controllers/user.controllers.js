@@ -15,183 +15,146 @@ import { Trainer } from "../models/trainer.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
+
   const {
     plan,
     paymentStatus,
     price,
     admissionFee,
     paymentMethod,
-    discount,
-    discountOnAdFee,
+
     discountType,
+    discount,
+
     discountTypeOnAdFee,
+    discountOnAdFee,
   } = req.body;
-  // will think whather will access to payment Status
-  // pricing will be auto completed via backend ,once gets confirmed
 
   if (!(plan && price)) {
-    throw new ApiError(400, "plan and price must required");
-    // will change accordingly as per requirement
+    throw new ApiError(400, "plan and price must be provided");
   }
 
-  if ([username, phoneNumber, password].some((t) => !t && t !== 0)) {
+  if ([username, phoneNumber, password].some(v => !v && v !== 0)) {
+    throw new ApiError(400, "username, phoneNumber, password are required");
+  }
+
+  if (!(discountType && discountTypeOnAdFee)) {
     throw new ApiError(
       400,
-      "username , phonenumber and password must required"
+      "discountType and discountTypeOnAdFee are required"
     );
   }
-  const check = await User.findOne({
+
+  const exists = await User.findOne({
     $or: [{ email }, { phoneNumber }],
   });
-  if (check)
-    throw new ApiError(
-      400,
-      "user already exits , via same phone number or email"
-    );
+  if (exists) {
+    throw new ApiError(400, "user already exists");
+  }
 
-  const avatarFile = req.file.buffer;
-  if (!avatarFile) throw new ApiError(400, "avatar must required");
+  const avatarBuffer = req.file?.buffer;
+  if (!avatarBuffer) throw new ApiError(400, "avatar is required");
 
-  const avatarOnCloud = await uploadOnCloudinary(avatarFile);
-
+  const avatarOnCloud = await uploadOnCloudinary(avatarBuffer);
   if (!avatarOnCloud) {
-    throw new ApiError(400, "faield to upload photo on cloudinary");
+    throw new ApiError(400, "failed to upload avatar");
   }
 
   const user = await User.create({
+    username,
     email: email || "",
     phoneNumber,
-    username,
-    password, // as per now will be given manually , for later can be cahnged , further
+    password,
     avatar: {
       url: avatarOnCloud.url,
       public_id: avatarOnCloud.public_id,
     },
   });
 
-  if (!user)
-    throw new ApiError(500, "internal server error , failed to create user");
-
-  let currentDate = new Date();
-
-  if (plan === "monthly") {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-  } else if (plan === "quarterly") {
-    currentDate.setMonth(currentDate.getMonth() + 3);
-  } else if (plan === "half-yearly") {
-    currentDate.setMonth(currentDate.getMonth() + 6);
-  } else if (plan === "yearly") {
-    currentDate.setMonth(currentDate.getMonth() + 12);
+  if (!user) {
+    throw new ApiError(500, "failed to create user");
   }
 
-  if (!(discountTypeOnAdFee && discountType)) {
-    await User.findByIdAndDelete(user._id);
-    throw new ApiError(
-      400,
-      "discount type of admission and montly is required"
-    );
-  }
+  const startDate = new Date();
+  const endDate = new Date(startDate);
 
-  let safeDiscount = 0;
+  if (plan === "monthly") endDate.setMonth(endDate.getMonth() + 1);
+  if (plan === "quarterly") endDate.setMonth(endDate.getMonth() + 3);
+  if (plan === "half-yearly") endDate.setMonth(endDate.getMonth() + 6);
+  if (plan === "yearly") endDate.setMonth(endDate.getMonth() + 12);
+
+  let subscriptionDiscountAmount = 0;
   if (discountType === "percentage") {
-    safeDiscount = ((price * discount) / 100).toFixed(2); // bt keep in my mind , percentage should must be in between from (0-100)
+    subscriptionDiscountAmount = (Number(price) * Number(discount || 0)) / 100;
   } else if (discountType === "flat") {
-    if (discount === undefined) {
-      safeDiscount = 0;
-    } else {
-      safeDiscount = discount;
-    }
-  } else if(discountType === "none"){
-    safeDiscount = 0;
+    subscriptionDiscountAmount = Number(discount || 0);
+  }
+  let admissionDiscountAmount = 0;
+
+  if (discountTypeOnAdFee === "percentage") {
+    admissionDiscountAmount =
+      (Number(admissionFee) * Number(discountOnAdFee || 0)) / 100;
+  } else if (discountTypeOnAdFee === "flat") {
+    admissionDiscountAmount = Number(discountOnAdFee || 0);
   }
 
-  const subPayLoad = {
+  const subPayload = {
     plan,
-    price,
-    startDate: new Date(),
+    price: Number(price),
+    startDate,
+    endDate,
     status: "active",
     paymentStatus: paymentStatus || "paid",
-    endDate: currentDate,
-    discount: Number(safeDiscount),
-    finalAmount: Number(price) - Number(safeDiscount),
-    discountType
+    discountType,
+    discount: Number(discount || 0),
+    finalAmount: Number(price) - subscriptionDiscountAmount,
   };
 
-  let safeDiscountOnAdFee = 0;
-  if(discountTypeOnAdFee === "percentage"){
-    safeDiscountOnAdFee = ((discountOnAdFee * admissionFee)/100).toFixed(2)
-  }else if(safeDiscountOnAdFee === "flat"){
-    if (discountOnAdFee === undefined) {
-      safeDiscountOnAdFee = 0;
-    } else {
-      safeDiscountOnAdFee = discountOnAdFee;
-    }
-  }else if(discountTypeOnAdFee === "none"){
-    safeDiscountOnAdFee = 0;
-  }
   const subscription = await Subscription.create({
     user: user._id,
-    admissionFee,
-    discountOnAdFee: Number(safeDiscountOnAdFee),
-    finalAdFee: Number(admissionFee) - Number(safeDiscountOnAdFee),
-    subscription: [subPayLoad],
-    discountTypeOnAdFee
+    admissionFee: Number(admissionFee),
+
+    discountTypeOnAdFee,
+    discountOnAdFee: Number(discountOnAdFee || 0),
+    finalAdFee: Number(admissionFee) - admissionDiscountAmount,
+
+    subscription: [subPayload],
   });
 
   if (!subscription) {
     await User.findByIdAndDelete(user._id);
-    throw new ApiError(
-      400,
-      "internal server error wasn't able to create subscription document and user been deleted successfully"
-    );
+    throw new ApiError(500, "failed to create subscription");
   }
 
-  const update = await User.findByIdAndUpdate(
-    user._id,
-    {
-      $set: {
-        subscription: subscription._id,
-      },
-    },
-    {
-      new: true,
-    }
-  ).populate("subscription");
-
-  if (!update) {
-    await User.findByIdAndDelete(user._id);
-    await Subscription.findByIdAndDelete(subscription._id);
-    throw new ApiError(
-      400,
-      "wasn't able to update the id for subscriotion in user document"
-    );
-  }
+  await User.findByIdAndUpdate(user._id, {
+    $set: { subscription: subscription._id },
+  });
 
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
-    // referenceId: renewal.subscription[renewal.subscription.length - 1]._id,
     referenceId:
-      subscription.subscription[subscription.subscription.length - 1]._id,
+      subscription.subscription[
+        subscription.subscription.length - 1
+      ]._id,
     amount:
       Number(price) +
       Number(admissionFee) -
-      Number(safeDiscount) -
-      Number(safeDiscountOnAdFee),
+      subscriptionDiscountAmount -
+      admissionDiscountAmount,
+
     paymentMethod: paymentMethod || "cash",
   });
 
   if (!transaction) {
-    await User.findByIdAndDelete(user._id);
-    await Subscription.findByIdAndDelete(subscription._id);
-    throw new ApiError(400, "wasn't able to create transation record");
+    throw new ApiError(500, "failed to create transaction");
   }
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      update, // later if need to upgrade to populate with subscription will have to do the same as following
-      "user created successfully"
+      user,
+      "member created successfully"
     )
   );
 });
@@ -292,7 +255,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "Member not found");
 
-  const { plan, paymentStatus, price, startDate, paymentMethod } = req.body;
+  const { plan, paymentStatus, price, startDate, paymentMethod  , discountType, discount,} = req.body;
 
   if (!plan || !price) {
     throw new ApiError(400, "Plan and price are required");
@@ -307,6 +270,13 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   else throw new ApiError(400, "Invalid plan");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
+  let subscriptionDiscountAmount = 0;
+
+  if (discountType === "percentage") {
+    subscriptionDiscountAmount = (Number(price) * Number(discount || 0)) / 100;
+  } else if (discountType === "flat") {
+    subscriptionDiscountAmount = Number(discount || 0);
+  }
 
   const renewal = await Subscription.findByIdAndUpdate(
     user.subscription,
@@ -318,6 +288,9 @@ const renewalSubscription = asyncHandler(async (req, res) => {
           startDate: start,
           endDate,
           status: "active",
+          discountType,
+          discount: Number(discount || 0),
+          finalAmount: Number(price) - subscriptionDiscountAmount,
           paymentStatus: paymentStatus || "paid",
         },
       },
@@ -334,7 +307,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
     user: user._id,
     source: "subscription",
     referenceId: latestSub._id,
-    amount: price,
+    amount: Number(price) - subscriptionDiscountAmount,
     paymentMethod: paymentMethod || "cash",
   });
 
