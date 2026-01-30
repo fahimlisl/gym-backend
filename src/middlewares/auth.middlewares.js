@@ -3,11 +3,13 @@ import { Admin } from "../models/admin.models.js"
 import { ApiError } from "../utils/ApiError.js"
 import { User } from "../models/user.models.js"
 import { Trainer } from "../models/trainer.models.js"
+import { CafeAdmin } from "../models/cafeAdmin.models.js"
 
 const roleMap = {
     admin: Admin,
     user : User,
-    trainer: Trainer
+    trainer: Trainer,
+    cafeAdmin:CafeAdmin
 }
 
 export const verifyJWT = async(req,_,next) => {

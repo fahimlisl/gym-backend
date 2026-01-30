@@ -1,50 +1,146 @@
 import { Router } from "express";
-import { loginAdmin, logOutAdmin, registerAdmin } from "../controllers/admin.controllers.js";
+import {
+  loginAdmin,
+  logOutAdmin,
+  registerAdmin,
+} from "../controllers/admin.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
-import { addSupplement, destroySupplement, editSupplement, fetchAllSupp, fetchParticularSupp } from "../controllers/supplement.controllers.js";
+import {
+  addSupplement,
+  destroySupplement,
+  editSupplement,
+  fetchAllSupp,
+  fetchParticularSupp,
+} from "../controllers/supplement.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 import { isAdmin } from "../middlewares/isAdmin.middlewares.js";
-import { destroyTrainer, editTrainer, fetchAllTrainer, fetchParticularTrainer, registerTrainer } from "../controllers/trainer.controllers.js";
-import { assignPT, destroyUser, editUser, fetchAllUser, fetchParticularUser, registerUser, renewalPtSub, renewalSubscription } from "../controllers/user.controllers.js";
-import { calculateTotalInLet, fetchAllTransactions } from "../controllers/transaction.controllers.js";
+import {
+  destroyTrainer,
+  editTrainer,
+  fetchAllTrainer,
+  fetchParticularTrainer,
+  registerTrainer,
+} from "../controllers/trainer.controllers.js";
+import {
+  assignPT,
+  destroyUser,
+  editUser,
+  fetchAllUser,
+  fetchParticularUser,
+  registerUser,
+  renewalPtSub,
+  renewalSubscription,
+} from "../controllers/user.controllers.js";
+import {
+  calculateTotalInLet,
+  fetchAllTransactions,
+  fetchDashboardRevenue,
+  fetchRecentTransactions,
+  fetchRevenueBySource,
+} from "../controllers/transaction.controllers.js";
+import {
+  addCafeAdmin,
+  destroyCafeAdmin,
+  fetchAllCafeAdmin,
+} from "../controllers/cafeAdmin.controllers.js";
+import {
+  addCafeItem,
+  destroyCafeItem,
+  editCafeItem,
+  fetchAllCafeItems,
+  fetchParticularCafeItem,
+  toggleAvailabilty,
+} from "../controllers/cafeItem.controllers.js";
 const router = Router();
 
-router.route("/register").post(registerAdmin)
-router.route("/login").post(loginAdmin)
-router.route("/logout").post(verifyJWT,logOutAdmin)
+router.route("/register").post(registerAdmin);
+router.route("/login").post(loginAdmin);
+router.route("/logout").post(verifyJWT, logOutAdmin);
 
 // user/member
-router.route("/registerUser").post(upload.single("avatar"),verifyJWT,isAdmin,registerUser)
-router.route("/destroy-user/:id").delete(verifyJWT,isAdmin,destroyUser)
-router.route("/renewalSubscription/:id").patch(verifyJWT,isAdmin,renewalSubscription)
-router.route("/edit-user/:id").patch(upload.single("avatar"),verifyJWT,isAdmin,editUser) 
-router.route("/fetchAllUser").get(verifyJWT,isAdmin,fetchAllUser)
-router.route("/fetchParticularUser/:id").get(verifyJWT,isAdmin,fetchParticularUser)
+router
+  .route("/registerUser")
+  .post(upload.single("avatar"), verifyJWT, isAdmin, registerUser);
+router.route("/destroy-user/:id").delete(verifyJWT, isAdmin, destroyUser);
+router
+  .route("/renewalSubscription/:id")
+  .patch(verifyJWT, isAdmin, renewalSubscription);
+router
+  .route("/edit-user/:id")
+  .patch(upload.single("avatar"), verifyJWT, isAdmin, editUser);
+router.route("/fetchAllUser").get(verifyJWT, isAdmin, fetchAllUser);
+router
+  .route("/fetchParticularUser/:id")
+  .get(verifyJWT, isAdmin, fetchParticularUser);
 // personal traninng
-router.route("/personal-training/:member_id/:trainer_id").post(verifyJWT,isAdmin,assignPT)
-router.route("/personal-training-renewal/:member_id/:trainer_id").post(verifyJWT,isAdmin,renewalPtSub)
-
+router
+  .route("/personal-training/:member_id/:trainer_id")
+  .post(verifyJWT, isAdmin, assignPT);
+router
+  .route("/personal-training-renewal/:member_id/:trainer_id")
+  .post(verifyJWT, isAdmin, renewalPtSub);
 
 // supplement
-router.route("/add-supplement").post(upload.array("images", 6),verifyJWT,isAdmin,addSupplement);
+router
+  .route("/add-supplement")
+  .post(upload.array("images", 6), verifyJWT, isAdmin, addSupplement);
 
-router.route("/edit-supplement/:id").patch(verifyJWT,isAdmin,editSupplement) 
+router.route("/edit-supplement/:id").patch(verifyJWT, isAdmin, editSupplement);
 
-router.route("/destroy-supplement/:id").delete(verifyJWT,isAdmin,destroySupplement)
+router
+  .route("/destroy-supplement/:id")
+  .delete(verifyJWT, isAdmin, destroySupplement);
 
-router.route("/fetch-supplements").get(verifyJWT,isAdmin,fetchAllSupp)
-router.route("/fetchParticularSupp/:id").get(verifyJWT,isAdmin,fetchParticularSupp)
-
+router.route("/fetch-supplements").get(verifyJWT, isAdmin, fetchAllSupp);
+router
+  .route("/fetchParticularSupp/:id")
+  .get(verifyJWT, isAdmin, fetchParticularSupp);
 
 // trainer
-router.route("/register-trainer").post(upload.single("avatar"),verifyJWT,isAdmin,registerTrainer)
-router.route("/destroy-trainer/:id").delete(verifyJWT,isAdmin,destroyTrainer)
-router.route("/edit-trainer/:id").patch(verifyJWT,isAdmin,editTrainer)
-router.route("/fetchAllTrainer").get(verifyJWT,isAdmin,fetchAllTrainer)
-router.route("/fetchParticularTrainer/:id").get(verifyJWT,isAdmin,fetchParticularTrainer)
-
+router
+  .route("/register-trainer")
+  .post(upload.single("avatar"), verifyJWT, isAdmin, registerTrainer);
+router.route("/destroy-trainer/:id").delete(verifyJWT, isAdmin, destroyTrainer);
+router.route("/edit-trainer/:id").patch(verifyJWT, isAdmin, editTrainer);
+router.route("/fetchAllTrainer").get(verifyJWT, isAdmin, fetchAllTrainer);
+router
+  .route("/fetchParticularTrainer/:id")
+  .get(verifyJWT, isAdmin, fetchParticularTrainer);
 
 // transections
-router.route("/fetchAllTransactions").get(verifyJWT,isAdmin,fetchAllTransactions)
-router.route("/calculateTotalInLet").get(verifyJWT,isAdmin,calculateTotalInLet)
-export default router
+router
+  .route("/fetchAllTransactions")
+  .get(verifyJWT, isAdmin, fetchAllTransactions);
+router
+  .route("/calculateTotalInLet")
+  .get(verifyJWT, isAdmin, calculateTotalInLet);
+
+// revenew
+router.get("/dashboard-revenue", verifyJWT, isAdmin, fetchDashboardRevenue);
+
+// via source
+router.get("/revenue-by-source", verifyJWT, isAdmin, fetchRevenueBySource);
+
+// recent trans
+router.get("/recent-transactions", verifyJWT, isAdmin, fetchRecentTransactions);
+
+// cafe staffs (admins)
+router.route("/add-cafe-admin").post(verifyJWT, isAdmin, addCafeAdmin);
+router.route("/fetchAllCafeAdmin").get(verifyJWT, isAdmin, fetchAllCafeAdmin);
+router
+  .route("/destroyCafeAdmin/:id")
+  .delete(verifyJWT, isAdmin, destroyCafeAdmin);
+// cafe items
+router
+  .route("/add-item")
+  .post(upload.single("image"), verifyJWT, isAdmin, addCafeItem);
+router.route("/destroy-item/:id").delete(verifyJWT, isAdmin, destroyCafeItem);
+router.route("/edit-item/:id").post(verifyJWT, isAdmin, editCafeItem);
+router.route("/fetchAllCafeItem").get(verifyJWT, isAdmin, fetchAllCafeItems);
+router
+  .route("/fetchParticularCafeItem/:id")
+  .get(verifyJWT, isAdmin, fetchParticularCafeItem);
+router
+  .route("/toggleAvailability/:id")
+  .patch(verifyJWT, isAdmin, toggleAvailabilty);
+export default router;
