@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { loginCafeAdmin, logoutCafeAdmin } from "../controllers/cafeAdmin.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
-import { addCafeItem, destroyCafeItem, editCafeItem, fetchAllCafeItems, fetchParticularCafeItem, toggleAvailabilty } from "../controllers/cafeItem.controllers.js";
+import { addCafeItem, addToCart, checkout, destroyCafeItem, editCafeItem, fetchAllCafeItems, fetchCart, fetchParticularCafeItem, toggleAvailabilty } from "../controllers/cafeItem.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 
 const router = Router();
@@ -19,4 +19,8 @@ router.route("/fetchAllCafeItem").get(verifyJWT,fetchAllCafeItems)
 router.route("/fetchParticularCafeItem/:id").get(verifyJWT,fetchParticularCafeItem)
 router.route("/toggleAvailability/:id").patch(verifyJWT,toggleAvailabilty)
 
+//cart
+router.route("/addToCart").post(verifyJWT,addToCart)
+router.route("/checkout").post(verifyJWT,checkout)
+router.route("/fetchCart").get(verifyJWT,fetchCart)
 export default router;

@@ -5,7 +5,8 @@ import { Transaction } from "../models/transaction.models.js";
 
 const fetchAllTransactions = asyncHandler(async(req,res) => {
     const trans = await Transaction.find({})
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    // .populate("referenceId"); // isn't able to populate referencce , due to some internal reasons
     return res
     .status(200)
     .json(
