@@ -5,6 +5,7 @@ import { Transaction } from "../models/transaction.models.js";
 
 const fetchAllTransactions = asyncHandler(async(req,res) => {
     const trans = await Transaction.find({})
+    .sort({ createdAt: -1 });
     return res
     .status(200)
     .json(
@@ -23,7 +24,6 @@ const calculateTotalInLet = asyncHandler(async(req,res) => {
     for(let i = 0 ; i <= trans.length - 1 ; i++){
         total = total + trans[i].amount
     }
-    console.log(total)
 
     // category wise calculation will be done also
 
@@ -130,7 +130,7 @@ const fetchRevenueBySource = asyncHandler(async (req, res) => {
 const fetchRecentTransactions = asyncHandler(async (req, res) => {
   const txns = await Transaction.find({ status: "success" })
     .sort({ paidAt: -1 })
-    .limit(20)   // for now limit is 20 , need to ask adminisation , for the further details
+    .limit(20)   // will be for a day , doesn't matter how much
     .populate("user", "username phoneNumber");
 
   return res.status(200).json(
