@@ -1,6 +1,8 @@
 import app from "./app.js";
 import dotenv from "dotenv"
 import { connectDB } from "./db/index.js";
+import "./cron/couponExpire.cron.js"; // invoking corn coupon expire ,
+
 
 dotenv.config({
     path:"./.env"

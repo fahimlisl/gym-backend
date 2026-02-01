@@ -51,6 +51,7 @@ import {
   fetchParticularCafeItem,
   toggleAvailabilty,
 } from "../controllers/cafeItem.controllers.js";
+import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -143,4 +144,12 @@ router
 router
   .route("/toggleAvailability/:id")
   .patch(verifyJWT, isAdmin, toggleAvailabilty);
+
+
+// coupon 
+router.route("/add-coupon").post(verifyJWT,isAdmin,addCoupon)
+router.route("/fetchAllCoupons").get(verifyJWT,isAdmin,fetchAllCoupons)
+router.route("/edit-coupon/:id").patch(verifyJWT,isAdmin,editCoupons)
+router.route("/toggleCouponExpire/:id").patch(verifyJWT,isAdmin,toggleCouponExpire)
+router.route("/destroyCoupon/:id").delete(verifyJWT,isAdmin,destroyCoupon)
 export default router;

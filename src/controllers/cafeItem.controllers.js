@@ -239,8 +239,8 @@ const addToCart = asyncHandler(async (req, res) => {
         items: {
           item: itemId,
           quantity,
-          name:item.name,
-          price:item.price
+          name: item.name,
+          price: item.price,
         },
       },
     });
@@ -264,28 +264,59 @@ const addToCart = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, cart, "cart successfully updated"));
 });
 
-const fetchCart = asyncHandler(async(req,res) => {
+const removeFromCart = asyncHandler(async (req, res) => {
+  const { itemId } = req.body;
+  const adminId = req.user._id;
+
+  const cart = await CafeCart.findOne({ handledBy: adminId });
+  if (!cart) {
+    throw new ApiError(404, "Cart not found");
+  }
+
+  const cartItem = cart.items.find(
+    (i) => i.item.toString() === itemId
+  );
+
+  if (!cartItem) {
+    throw new ApiError(404, "Item not found in cart");
+  }
+
+  cart.totalAmount -= cartItem.price * cartItem.quantity;
+
+  cart.items = cart.items.filter(
+    (i) => i.item.toString() !== itemId
+  );
+
+  if (cart.totalAmount < 0) cart.totalAmount = 0;
+
+  await cart.save();
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      cart,
+      "Item removed and cart updated successfully"
+    )
+  );
+});
+
+const fetchCart = asyncHandler(async (req, res) => {
   const adminId = req.user._id; // cafe admin
 
   let cart = await CafeCart.findOne({ handledBy: adminId });
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      cart,
-      "cart succesfully being fetched"
-    )
-  )
-})
+    .status(200)
+    .json(new ApiResponse(200, cart, "cart succesfully being fetched"));
+});
 
 const checkout = asyncHandler(async (req, res) => {
   const { paymentMethod, upiRef } = req.body;
   const adminId = req.user._id;
 
-  const cart = await CafeCart.findOne({ handledBy: adminId })
-    .populate("items.item");
+  const cart = await CafeCart.findOne({ handledBy: adminId }).populate(
+    "items.item"
+  );
 
   if (!cart || cart.items.length === 0)
     throw new ApiError(400, "Cart is empty");
@@ -293,7 +324,7 @@ const checkout = asyncHandler(async (req, res) => {
   const orderItems = cart.items.map((i) => ({
     item: i.item._id,
     quantity: i.quantity,
-    name:i.name,
+    name: i.name,
     priceAtPurchase: i.item.price,
   }));
 
@@ -305,22 +336,57 @@ const checkout = asyncHandler(async (req, res) => {
     handledBy: adminId,
   });
 
-// import { Transaction } from "../models/transaction.models.js";
   await Transaction.create({
-    source:"cafe",
-    referenceId:order._id,
+    source: "cafe",
+    referenceId: order._id,
     paymentMethod,
-    status:"success",
-    amount:order.totalAmount
-  })
+    status: "success",
+    amount: order.totalAmount,
+  });
 
-  // 🔥 IMPORTANT LINE
   await CafeCart.deleteOne({ _id: cart._id });
 
   res.json(new ApiResponse(201, order, "Order placed successfully"));
 });
 
+const decrementCartItem = asyncHandler(async (req, res) => {
+  const { itemId } = req.body;
+  const adminId = req.user._id;
 
+  const cart = await CafeCart.findOne({
+    handledBy: adminId,
+    "items.item": itemId,
+  });
+
+  if (!cart) {
+    throw new ApiError(404, "Cart or item not found");
+  }
+
+  const cartItem = cart.items.find(
+    (i) => i.item.toString() === itemId
+  );
+
+  if (!cartItem) {
+    throw new ApiError(404, "Item not found in cart");
+  }
+
+  if (cartItem.quantity > 1) {
+    cartItem.quantity -= 1;
+    cart.totalAmount -= cartItem.price;
+    await cart.save();
+  } 
+  else {
+    cart.items = cart.items.filter(
+      (i) => i.item.toString() !== itemId
+    );
+    cart.totalAmount -= cartItem.price;
+    await cart.save();
+  }
+
+  return res.status(200).json(
+    new ApiResponse(200, cart, "Item quantity decremented")
+  );
+});
 
 
 export {
@@ -332,5 +398,7 @@ export {
   toggleAvailabilty,
   addToCart,
   checkout,
-  fetchCart
+  fetchCart,
+  removeFromCart,
+  decrementCartItem,
 };
