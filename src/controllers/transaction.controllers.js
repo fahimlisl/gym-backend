@@ -3,20 +3,45 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Transaction } from "../models/transaction.models.js";
 
-const fetchAllTransactions = asyncHandler(async(req,res) => {
-    const trans = await Transaction.find({})
+
+const fetchAllTransactions = asyncHandler(async (req, res) => {
+  const transactions = await Transaction.find({})
+    .populate("referenceId") 
     .sort({ createdAt: -1 })
-    // .populate("referenceId"); // isn't able to populate referencce , due to some internal reasons
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            trans,
-            "sucessfully fetched all transactions"
-        )
+    .lean();
+
+  const formatted = transactions.map((tx) => {
+    if (
+      tx.subReferenceId &&
+      tx.referenceId &&
+      Array.isArray(tx.referenceId.subscription)
+    ) {
+      const matchedSub = tx.referenceId.subscription.find(
+        (sub) =>
+          sub._id.toString() === tx.subReferenceId.toString()
+      );
+
+      return {
+        ...tx,
+        subDetail: matchedSub || null, 
+        referenceId: {
+          _id: tx.referenceId._id,
+          user: tx.referenceId.user || null,
+        },
+      };
+    }
+    return tx;
+  });
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      formatted,
+      "Successfully fetched all transactions"
     )
-})
+  );
+});
+
 
 
 const calculateTotalInLet = asyncHandler(async(req,res) => {
@@ -132,7 +157,8 @@ const fetchRecentTransactions = asyncHandler(async (req, res) => {
   const txns = await Transaction.find({ status: "success" })
     .sort({ paidAt: -1 })
     .limit(20)   // will be for a day , doesn't matter how much
-    .populate("user", "username phoneNumber");
+    .populate("user", "username phoneNumber")
+    .populate("referenceId")
 
   return res.status(200).json(
     new ApiResponse(200, txns, "recent transactions fetched")

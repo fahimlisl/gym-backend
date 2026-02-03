@@ -133,8 +133,12 @@ const registerUser = asyncHandler(async (req, res) => {
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
-    referenceId:
-      subscription.subscription[
+    // referenceId:
+    //   subscription.subscription[
+    //     subscription.subscription.length - 1
+    //   ]._id,
+    referenceId: subscription._id,
+    subReferenceId:subscription.subscription[
         subscription.subscription.length - 1
       ]._id,
     amount:
@@ -144,6 +148,7 @@ const registerUser = asyncHandler(async (req, res) => {
       admissionDiscountAmount,
 
     paymentMethod: paymentMethod || "cash",
+    referenceModel:"Subscription"
   });
 
   if (!transaction) {
@@ -306,9 +311,15 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
-    referenceId: latestSub._id,
+    referenceId: renewal._id,
+    // subReferenceId:subscription.subscription[
+    //     subscription.subscription.length - 1
+    //   ]._id,
+    // referenceId: latestSub._id,
+    subReferenceId:latestSub,
     amount: Number(price) - subscriptionDiscountAmount,
     paymentMethod: paymentMethod || "cash",
+    referenceModel:"Subscription"
   });
 
   if (!transaction) {
@@ -461,10 +472,13 @@ const assignPT = asyncHandler(async (req, res) => {
   await Transaction.create({
     user: userId,
     source: "personal-training",
-    referenceId: pt.subscription[pt.subscription.length - 1]._id,
+    // referenceId: pt.subscription[pt.subscription.length - 1]._id,
+    referenceId:pt._id,
+    subReferenceId: pt.subscription[pt.subscription.length - 1]._id,
     amount: price,
     paymentMethod: paymentMethod || "cash",
     status: "success",
+    referenceModel:"Ptbill"
   });
 
   await User.findByIdAndUpdate(
@@ -559,10 +573,12 @@ const renewalPtSub = asyncHandler(async (req, res) => {
   await Transaction.create({
     user: userId,
     source: "personal-training",
-    referenceId: pt.subscription[pt.subscription.length - 1]._id,
+    referenceId:pt._id,
+    subReferenceId: pt.subscription[pt.subscription.length - 1]._id,
     amount: price,
     paymentMethod: paymentMethod || "cash",
     status: "success",
+    referenceModel:"Ptbill"
   });
 
   return res

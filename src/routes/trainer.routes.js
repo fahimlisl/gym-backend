@@ -9,6 +9,7 @@ import {
 } from "../controllers/diet.controllers.js";
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
+import { getAllFoods } from "../controllers/food.controllers.js";
 
 const router = Router();
 
@@ -31,6 +32,8 @@ router.route("/fetchAssignedStudents").get(verifyJWT,isTrainer,fetchAssignedStud
 router.route("/fetchSelf").get(verifyJWT,isTrainer,fetchParticularTrainer)
 
 
+// food
 
+router.route("/getAllFoods").get(verifyJWT,getAllFoods)
 
 export default router

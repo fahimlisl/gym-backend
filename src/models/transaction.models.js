@@ -10,14 +10,32 @@ const transactionSchema = new mongoose.Schema(
 
     source: {
       type: String,
-      enum: ["subscription", "supplement", "personal-training","cafe"],
+      enum: ["subscription", "supplement", "personal-training","cafe","expense"],
       required: true,
+    },
+
+    subReferenceId:{
+      type: mongoose.Schema.Types.ObjectId,
+      // this is sub reference for inserting the object of sub document under main document , 
     },
 
     referenceId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
+      refPath: "referenceModel",
       // subscriptionId or orderId
+    },
+
+    referenceModel: {
+      type: String,
+      required: true,
+      enum: [
+        "Subscription",
+        "Supplement",
+        "Ptbill",
+        "CafeOrder",
+        "Expense",
+      ],
     },
 
     amount: {

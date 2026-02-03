@@ -342,6 +342,7 @@ const checkout = asyncHandler(async (req, res) => {
     paymentMethod,
     status: "success",
     amount: order.totalAmount,
+    referenceModel:"CafeOrder"
   });
 
   await CafeCart.deleteOne({ _id: cart._id });
@@ -388,6 +389,37 @@ const decrementCartItem = asyncHandler(async (req, res) => {
   );
 });
 
+const incrementCartItem = asyncHandler(async (req, res) => {
+  const { itemId } = req.body;
+  const adminId = req.user._id;
+
+  const cart = await CafeCart.findOne({
+    handledBy: adminId,
+    "items.item": itemId,
+  });
+
+  if (!cart) {
+    throw new ApiError(404, "Cart or item not found");
+  }
+
+  const cartItem = cart.items.find(
+    (i) => i.item.toString() === itemId
+  );
+
+  if (!cartItem) {
+    throw new ApiError(404, "Item not found in cart");
+  }
+
+  cartItem.quantity += 1;
+  cart.totalAmount += cartItem.price;
+
+  await cart.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, cart, "Item quantity incremented")
+  );
+});
+
 
 export {
   addCafeItem,
@@ -401,4 +433,5 @@ export {
   fetchCart,
   removeFromCart,
   decrementCartItem,
+  incrementCartItem
 };
