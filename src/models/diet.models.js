@@ -1,16 +1,42 @@
-import mongoose , { Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
+
+const foodSchema = new mongoose.Schema(
+  {
+    foodName: {
+      type: String,
+      required: true,
+    },
+    calories: {
+      type: Number,
+      required: true,
+    },
+    servingSize: {
+      type: String,
+    },
+    protein: {
+      type: Number,
+    },
+    carbs: {
+      type: Number,
+    },
+    fats: {
+      type: Number,
+    },
+    fiber: {
+      type: Number,
+    },
+    sugar: {
+      type: Number,
+    },
+  },
+  { timestamps: true }
+);
 
 const dietSchema = new mongoose.Schema(
   {
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
-    },
-
-    trainer: {
-      type: Schema.Types.ObjectId,
-      ref: "Trainer", 
       required: true,
     },
 
@@ -21,13 +47,14 @@ const dietSchema = new mongoose.Schema(
     },
 
     calories: {
+      // total calorie will be evealuated via backend logic
       type: Number,
       required: true,
     },
 
     dietType: {
       type: String,
-      enum: ["veg", "non-veg", "vegan"],
+      enum: ["veg", "non-veg", "vegan", "general"],
       required: true,
     },
 
@@ -36,15 +63,16 @@ const dietSchema = new mongoose.Schema(
       default: 5,
     },
 
-    plan: {
-      type: Object,
-      required: true,
-    },
+    // plan: {
+    //   type: Object,
+    //   required: true,
+    // },
 
     generatedBy: {
-      type: String,
-      enum: ["ai", "trainer"],
-      default: "ai",
+      type: Schema.Types.ObjectId,
+      ref: "Trainer",
+      // enum: ["ai", "trainer"],
+      // default: "ai",
     },
 
     status: {
@@ -52,6 +80,9 @@ const dietSchema = new mongoose.Schema(
       enum: ["draft", "approved"],
       default: "draft",
     },
+    foods:{
+      type:[foodSchema]
+  }
   },
   { timestamps: true }
 );

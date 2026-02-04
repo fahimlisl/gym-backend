@@ -6,10 +6,14 @@ import {
   generateDiet,
   approveDiet,
   getMyDiet,
+  foodItemInserction,
+  showParticularDiet,
+  checkIfDietExists,
+  approveCheck,
 } from "../controllers/diet.controllers.js";
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
-import { getAllFoods } from "../controllers/food.controllers.js";
+import { addFood, getAllFoods } from "../controllers/food.controllers.js";
 
 const router = Router();
 
@@ -34,6 +38,15 @@ router.route("/fetchSelf").get(verifyJWT,isTrainer,fetchParticularTrainer)
 
 // food
 
-router.route("/getAllFoods").get(verifyJWT,getAllFoods)
+router.route("/getAllFoods").get(verifyJWT,isTrainer,getAllFoods)
+
+
+// diet kinda thigns 
+
+router.route("/addFoodtoDB").post(verifyJWT,isTrainer,addFood)
+router.route("/addFood").post(verifyJWT,isTrainer,foodItemInserction)
+router.route("/diet/show/:id").get(verifyJWT,isTrainer,showParticularDiet)
+router.route("/diet/check/:id").get(verifyJWT,isTrainer,checkIfDietExists)
+router.route("/diet/check/status/:id").get(verifyJWT,isTrainer,approveCheck)
 
 export default router

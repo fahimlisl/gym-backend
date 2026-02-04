@@ -4,13 +4,19 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import generateAccessAndRefreshToken from "../utils/generateANR.js";
 import { options } from "../utils/options.js";
-import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import { User } from "../models/user.models.js";
 
 const registerTrainer = asyncHandler(async (req, res) => {
-  const { fullName, email, phoneNumber, password, experience , salary} = req.body;
+  const { fullName, email, phoneNumber, password, experience, salary } =
+    req.body;
   if (
-    [fullName, phoneNumber, password, experience,salary].some((t) => !t && t !== 0)
+    [fullName, phoneNumber, password, experience, salary].some(
+      (t) => !t && t !== 0
+    )
   ) {
     throw new ApiError(400, "each field is required");
   }
@@ -37,60 +43,53 @@ const registerTrainer = asyncHandler(async (req, res) => {
     phoneNumber,
     password,
     experience,
-    avatar:{
-        url:avatarOnCloud.url,
-        public_id:avatarOnCloud.public_id
+    avatar: {
+      url: avatarOnCloud.url,
+      public_id: avatarOnCloud.public_id,
     },
-    salary 
+    salary,
   });
-  if(!trainer) throw new ApiError(500,"internal server erorr , wasn't able to create trainer")
+  if (!trainer)
+    throw new ApiError(
+      500,
+      "internal server erorr , wasn't able to create trainer"
+    );
 
   return res
-  .status(200)  
-  .json(
-    new ApiResponse(
-        200,
-        trainer,
-        "trainer created successfully"
-    )
-  )
+    .status(200)
+    .json(new ApiResponse(200, trainer, "trainer created successfully"));
 });
 
-const loginTrainier = asyncHandler(async(req,res) => {
-    const {email, phoneNumber, password} = req.body;
-    if(!(email || phoneNumber)){
-        throw new ApiError(400,"email or phone number required")
-    }
-    const check = await Trainer.findOne({
-        $or:[
-            {email},{phoneNumber}
-        ]
-    })
-    if(!check) {
-        throw new ApiError(400,"trainer wasn't able to found")
-    }
-    if(!password) {
-        throw new ApiError(400,"password must requied")
-    }
-    const checkPassword = await check.isPasswordCorrect(password)
+const loginTrainier = asyncHandler(async (req, res) => {
+  const { email, phoneNumber, password } = req.body;
+  if (!(email || phoneNumber)) {
+    throw new ApiError(400, "email or phone number required");
+  }
+  const check = await Trainer.findOne({
+    $or: [{ email }, { phoneNumber }],
+  });
+  if (!check) {
+    throw new ApiError(400, "trainer wasn't able to found");
+  }
+  if (!password) {
+    throw new ApiError(400, "password must requied");
+  }
+  const checkPassword = await check.isPasswordCorrect(password);
 
-    if(!checkPassword) {
-        throw new ApiError(400,"password didn't match , invalid crednetials")
-    }
-    const {accessToken, refreshToken} = await generateAccessAndRefreshToken(check._id,Trainer);
+  if (!checkPassword) {
+    throw new ApiError(400, "password didn't match , invalid crednetials");
+  }
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    check._id,
+    Trainer
+  );
 
-     return res
+  return res
     .status(200)
     .cookie("refreshToken", refreshToken, options)
     .cookie("accessToken", accessToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        check,
-        "trainer logged in successfully"
-      )
-    );
-})
+    .json(new ApiResponse(200, check, "trainer logged in successfully"));
+});
 
 const logOutTrainer = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -125,140 +124,120 @@ const logOutTrainer = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, `admin logged out successfully`));
 });
 
-
-const editTrainer = asyncHandler(async(req,res) => {
-    const { fullName, email, phoneNumber, experience , salary} = req.body;
-    const trainerId = req.params.id;
-  if (
-    !(fullName || email || phoneNumber || experience || salary)
-  ) {
+const editTrainer = asyncHandler(async (req, res) => {
+  const { fullName, email, phoneNumber, experience, salary } = req.body;
+  const trainerId = req.params.id;
+  if (!(fullName || email || phoneNumber || experience || salary)) {
     throw new ApiError(400, "at least one field is required");
   }
 
-  const check = await Trainer.findById(trainerId)
-  if(!check) {
-    throw new ApiError(400,"trainer wasn't able to found")
+  const check = await Trainer.findById(trainerId);
+  if (!check) {
+    throw new ApiError(400, "trainer wasn't able to found");
   }
-  const update = await Trainer.findByIdAndUpdate(check._id,
+  const update = await Trainer.findByIdAndUpdate(
+    check._id,
     {
-        $set:{
-            fullName:fullName || check.fullName,
-            email : email || check.email,
-            phoneNumber: phoneNumber || check.phoneNumber,
-            experience : experience || check.experience,
-            salary: salary || check.salary
-        }
+      $set: {
+        fullName: fullName || check.fullName,
+        email: email || check.email,
+        phoneNumber: phoneNumber || check.phoneNumber,
+        experience: experience || check.experience,
+        salary: salary || check.salary,
+      },
     },
     {
-        new:true
+      new: true,
     }
-  )
+  );
 
-  if(!update){
-    throw new ApiError(500,"internal server error , failed to updatetrainer")
+  if (!update) {
+    throw new ApiError(500, "internal server error , failed to updatetrainer");
   }
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
+    .status(200)
+    .json(
+      new ApiResponse(
         200,
         update,
         "trainer deatils have been updated successfully"
-    )
-  )
-})
+      )
+    );
+});
 
-const destroyTrainer = asyncHandler(async(req,res) => {
-    const trainerId = req.params.id;
-    const del = await Trainer.findByIdAndDelete(trainerId)
-    if(!del){
-        throw new ApiError(400,"failed to delete trianer")
-    }
-
-    const delAvatar = await deleteFromCloudinary(del.avatar.public_id);
-    if(!delAvatar){
-        throw new ApiError(400,"failed to delete avatar of trainer")
-    }
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            {},
-            "trainer have been successfully deleted"
-        )
-    )
-})
-
-const fetchAllTrainer = asyncHandler(async(req,res) => {
-    const trainers = await Trainer.find({}).select("-password -refreshToken")
-    if(!trainers){
-        return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                {},
-                "no trainers been added yet"
-            )
-        )
-    }
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            trainers,
-            "trainers been successfully fetched"
-        )
-    )
-})
-
-const fetchParticularTrainer = asyncHandler(async(req,res) => {
-    const trainerId = req.params.id;
-    const trainer = await Trainer.findById(trainerId).select("-password -refreshToken");
-    if(!trainer) throw new ApiError(400,"trainer wasn't able to found regarding this id");
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            trainer,
-            "trainer fetched successfully"
-        )
-    )
-})
-
-const fetchAssignedStudents = asyncHandler(async(req,res) => {
-  const trainerId = req.user._id;
-  const trainer = await Trainer.findById(trainerId)
-  let stud = []
-  for(let i = 0 ; i <= trainer.students.length - 1 ; i++ ){
-    // if(trainer.students[i].student !== )
-    stud.push(trainer.students[i].student)
-  }
-  let stss = []
-  for(let i = 0 ; i<= trainer.students.length - 1 ; i++){
-
-    const s = await User.findById(stud[i])
-    stss.push(s)
+const destroyTrainer = asyncHandler(async (req, res) => {
+  const trainerId = req.params.id;
+  const del = await Trainer.findByIdAndDelete(trainerId);
+  if (!del) {
+    throw new ApiError(400, "failed to delete trianer");
   }
 
-  // one bug , is that , if one member is gettingmutople subs , gettinig fetch mutipl time , bt not rqrqwueid
-  
+  const delAvatar = await deleteFromCloudinary(del.avatar.public_id);
+  if (!delAvatar) {
+    throw new ApiError(400, "failed to delete avatar of trainer");
+  }
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      stss,
-      "successfully fetched all the members"
-    )
-  )
-})
+    .status(200)
+    .json(new ApiResponse(200, {}, "trainer have been successfully deleted"));
+});
 
+const fetchAllTrainer = asyncHandler(async (req, res) => {
+  const trainers = await Trainer.find({}).select("-password -refreshToken");
+  if (!trainers) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, {}, "no trainers been added yet"));
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, trainers, "trainers been successfully fetched"));
+});
 
+const fetchParticularTrainer = asyncHandler(async (req, res) => {
+  const trainerId = req.params.id;
+  const trainer = await Trainer.findById(trainerId).select(
+    "-password -refreshToken"
+  );
+  if (!trainer)
+    throw new ApiError(400, "trainer wasn't able to found regarding this id");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, trainer, "trainer fetched successfully"));
+});
 
-export {logOutTrainer,loginTrainier,registerTrainer}
-export{editTrainer,destroyTrainer,fetchAllTrainer,fetchParticularTrainer,fetchAssignedStudents}
+const fetchAssignedStudents = asyncHandler(async (req, res) => {
+  const trainerId = req.user._id;
+
+  const trainer = await Trainer.findById(trainerId).lean();
+  if (!trainer) {
+    throw new ApiError(404, "Trainer not found");
+  }
+
+  const studentIds = trainer.students.map((s) => s.student.toString());
+
+  const uniqueStudentIds = [...new Set(studentIds)];
+
+  const students = await User.find({
+    _id: { $in: uniqueStudentIds },
+  });
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        students,
+        "Successfully fetched unique assigned members"
+      )
+    );
+});
+
+export { logOutTrainer, loginTrainier, registerTrainer };
+export {
+  editTrainer,
+  destroyTrainer,
+  fetchAllTrainer,
+  fetchParticularTrainer,
+  fetchAssignedStudents,
+};
