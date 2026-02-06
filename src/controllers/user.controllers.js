@@ -231,14 +231,39 @@ const destroyUser = asyncHandler(async (req, res) => {
     );
 });
 
+// const parseDDMMYYYY = (value) => {
+//   if (!value) return new Date();
+
+//   if (value instanceof Date) return value;
+
+//   const [day, month, year] = value.split("/").map(Number);
+//   return new Date(year, month - 1, day);
+// };
+
 const parseDDMMYYYY = (value) => {
-  if (!value) return new Date();
+  if (!value) return null;
 
-  if (value instanceof Date) return value;
+  // Already a Date
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return value;
+  }
 
-  const [day, month, year] = value.split("/").map(Number);
-  return new Date(year, month - 1, day);
+  // ISO format: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    const [day, month, year] = value.split("/").map(Number);
+    const d = new Date(year, month - 1, day);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
 };
+
 
 const addMonthsSafe = (date, months) => {
   const d = new Date(date);
@@ -376,7 +401,7 @@ const editUser = asyncHandler(async (req, res) => {
 
 // will add a lil changes for fetching when users count is 0
 const fetchAllUser = asyncHandler(async (req, res) => {
-  const users = await User.find({});
+  const users = await User.find({}).populate("subscription");
   if (!users) {
     return res
       .status(200)
@@ -423,6 +448,12 @@ const assignPT = asyncHandler(async (req, res) => {
     throw new ApiError(400, "planType and price must required");
 
   const start = parseDDMMYYYY(startDate);
+  if (!start) {
+  throw new ApiError(
+    400,
+    "Invalid startDate. Use DD/MM/YYYY or YYYY-MM-DD"
+  );
+}
 
   let monthsToAdd = 0;
   if (plan === "monthly") monthsToAdd = 1;
