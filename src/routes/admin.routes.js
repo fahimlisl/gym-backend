@@ -53,6 +53,7 @@ import {
 } from "../controllers/cafeItem.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
+import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -158,4 +159,17 @@ router.route("/destroyCoupon/:id").delete(verifyJWT,isAdmin,destroyCoupon)
 router.route("/add-expense").post(verifyJWT,isAdmin,addExpense)
 router.route("/fetchAllExpenses").get(verifyJWT,isAdmin,fetchAllExpenses)
 router.route("/fetchEquipmentsExpenses").get(verifyJWT,isAdmin,fetchEquipmentsExpenses)
+
+
+
+
+// cron expire routes 
+
+// make this fucntion more secure
+router.route("/test-expiry").get(
+  async (req, res) => {
+  const result = await testSubscriptionExpiry();
+  res.json(result);
+});
+
 export default router;

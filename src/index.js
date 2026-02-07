@@ -1,7 +1,9 @@
 import app from "./app.js";
 import dotenv from "dotenv"
 import { connectDB } from "./db/index.js";
-import "./cron/couponExpire.cron.js"; // invoking corn coupon expire ,
+
+// invoking cron methods just when the server starts
+import "./cron/couponExpire.cron.js"; 
 import "./cron/subscriptionExpire.cron.js"
 import "./cron/ptExpiry.cron.js"
 
@@ -17,5 +19,5 @@ connectDB()
 })
 .catch((err) => {
     console.log(`got error in main src/index.js , error : ${err}`)
-    process.exit(0)
+    process.exit(1)
 })
