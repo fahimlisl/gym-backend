@@ -13,9 +13,10 @@ const addCoupon = asyncHandler(async (req, res) => {
     expiryDate,
     isActive,
     value,
+    category
   } = req.body;
   if (
-    [code, typeOfCoupon, expiryDate, isActive, value].some((t) => !t && t !== 0)
+    [code, typeOfCoupon, expiryDate, value,category].some((t) => !t && t !== 0)
   ) {
     throw new ApiError(
       400,
@@ -37,6 +38,7 @@ const addCoupon = asyncHandler(async (req, res) => {
     expiryDate,
     isActive,
     value,
+    category
   });
 
   if (!newcoup)
@@ -66,6 +68,7 @@ const editCoupons = asyncHandler(async (req, res) => {
     expiryDate,
     isActive,
     value,
+    category
   } = req.body;
   const coupon = await Coupon.findById(couponId);
   if (!coupon) throw new ApiError(400, "wasn't able to found the coupon");
@@ -80,6 +83,7 @@ const editCoupons = asyncHandler(async (req, res) => {
         expiryDate: expiryDate || coupon.expiryDate,
         isActive: isActive || coupon.isActive,
         value: value || coupon.value,
+        category: category || coupon.category
       },
     },
     {
@@ -153,6 +157,10 @@ const applyCoupon = asyncHandler(async (req, res) => {
 
   if (!coupon.isActive) {
     throw new ApiError(400, "Coupon is inactive");
+  }
+
+  if(coupon.category !== "CAFE"){
+    throw new ApiError(400,"wasn't able to apply, cateogry of coupon isn't CAFE!")
   }
 
   // if (coupon.expiryDate && coupon.expiryDate < new Date()) { // for later

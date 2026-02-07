@@ -385,7 +385,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
       endDate: endDate.toISOString(),
       finalAmount: Number(price) - subscriptionDiscountAmount,
       renewalDate: new Date().toISOString(),
-      renewalNumber: renewal.subscription.length;
+      renewalNumber: renewal.subscription.length
     });
   } catch (error) {
     console.error('Failed to trigger renewal email:', error.message);

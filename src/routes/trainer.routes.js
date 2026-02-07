@@ -14,6 +14,7 @@ import {
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
 import { addFood, getAllFoods } from "../controllers/food.controllers.js";
+import {upload} from "../middlewares/multer.middlewares.js"
 
 const router = Router();
 
@@ -48,5 +49,16 @@ router.route("/addFood").post(verifyJWT,isTrainer,foodItemInserction)
 router.route("/diet/show/:id").get(verifyJWT,isTrainer,showParticularDiet)
 router.route("/diet/check/:id").get(verifyJWT,isTrainer,checkIfDietExists)
 router.route("/diet/check/status/:id").get(verifyJWT,isTrainer,approveCheck)
+
+
+// user 
+// router.post(
+//   "/register",
+//   verifyJWT,
+//   isTrainer, 
+//   upload.single("avatar"), 
+//   registerUser
+// );
+
 
 export default router
