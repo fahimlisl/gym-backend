@@ -1,18 +1,22 @@
 import cron from "node-cron";
 import { Subscription } from "../models/subscription.models.js";
 
-console.log(`cron has been successfully invoked for subscription!`)
+console.log("✅ Subscription expiry cron loaded");
 
 export const subscriptionExpiryJob = () => {
-  // Runs every day at 12:05 AM
-  cron.schedule("5 0 * * *", async () => {
+  // Runs every day at 12:20 AM
+  cron.schedule("20 0 * * *", async () => {
     try {
       const now = new Date();
 
       const result = await Subscription.updateMany(
         {
-          "subscription.endDate": { $lt: now },
-          "subscription.status": "active",
+          subscription: {
+            $elemMatch: {
+              endDate: { $lt: now },
+              status: "active",
+            },
+          },
         },
         {
           $set: {
@@ -20,15 +24,23 @@ export const subscriptionExpiryJob = () => {
           },
         },
         {
-          arrayFilters: [{ "elem.endDate": { $lt: now } }],
+          arrayFilters: [
+            {
+              "elem.endDate": { $lt: now },
+              "elem.status": "active",
+            },
+          ],
         }
       );
 
       console.log(
-        `[CRON] Gym subscriptions expired: ${result.modifiedCount}`
+        `[CRON] Expired ${result.modifiedCount} subscription(s)`
       );
     } catch (error) {
-      console.error("[CRON] Subscription expiry failed", error);
+      console.error(
+        "[CRON] Subscription expiry failed",
+        error
+      );
     }
   });
 };

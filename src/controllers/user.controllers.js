@@ -12,6 +12,7 @@ import { Subscription } from "../models/subscription.models.js";
 import { Transaction } from "../models/transaction.models.js";
 import { Ptbill } from "../models/ptbill.models.js";
 import { Trainer } from "../models/trainer.models.js";
+import axios from "axios"
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber, password } = req.body;
@@ -153,6 +154,24 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (!transaction) {
     throw new ApiError(500, "failed to create transaction");
+  }
+
+  try {
+    await axios.post(process.env.N8N_WEBHOOK_URL, {
+      eventType: "new_member",
+      memberName: username,
+      email: email || '',
+      phoneNumber: phoneNumber,
+      plan: plan,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      price: Number(price),
+      admissionFee: Number(admissionFee),
+      finalAmount: Number(price) + Number(admissionFee) - subscriptionDiscountAmount - admissionDiscountAmount,
+      registrationDate: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Failed to trigger n8n webhook:', error);
   }
 
   return res.status(200).json(
@@ -355,6 +374,23 @@ const renewalSubscription = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Failed to generate transaction");
   }
 
+  try {
+    await axios.post(process.env.N8N_WEBHOOK_URL, {
+      eventType: "subscription_renewal",
+      memberName: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      plan: plan,
+      startDate: start.toISOString(),
+      endDate: endDate.toISOString(),
+      finalAmount: Number(price) - subscriptionDiscountAmount,
+      renewalDate: new Date().toISOString(),
+      renewalNumber: renewal.subscription.length;
+    });
+  } catch (error) {
+    console.error('Failed to trigger renewal email:', error.message);
+  }
+
   return res
     .status(200)
     .json(new ApiResponse(200, renewal, "Renewal completed successfully"));
@@ -512,7 +548,7 @@ const assignPT = asyncHandler(async (req, res) => {
     referenceModel:"Ptbill"
   });
 
-  await User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     userId,
     {
       $set: {
@@ -523,6 +559,25 @@ const assignPT = asyncHandler(async (req, res) => {
       new: true,
     }
   );
+
+  try {
+    const trainer = await Trainer.findById(trainerId);
+    
+    await axios.post(process.env.N8N_WEBHOOK_URL, {
+      eventType: "pt_assigned",
+      memberName: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      plan: plan,
+      startDate: start.toISOString(),
+      endDate: endDate.toISOString(),
+      price: price,
+      trainerName: trainer?.fullName || "Your Personal Trainer",
+      assignmentDate: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Failed to trigger PT assignment email:', error.message);
+  }
 
   return res
     .status(200)
@@ -611,6 +666,28 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     status: "success",
     referenceModel:"Ptbill"
   });
+
+  
+  try {
+    const trainer = await Trainer.findById(trainerId);
+    
+    await axios.post(process.env.N8N_WEBHOOK_URL, {
+      eventType: "pt_renewal",
+      memberName: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      plan: plan,
+      startDate: start.toISOString(),
+      endDate: endDate.toISOString(),
+      price: price,
+      trainerName: trainer?.name || "Your Personal Trainer",
+      renewalDate: new Date().toISOString(),
+      renewalNumber: pt.subscription.length
+    });
+  } catch (error) {
+    console.error('Failed to trigger PT renewal email:', error.message);
+  }
+
 
   return res
     .status(200)

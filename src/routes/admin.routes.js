@@ -52,7 +52,7 @@ import {
   toggleAvailabilty,
 } from "../controllers/cafeItem.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExpire } from "../controllers/coupon.controllers.js";
-import { addExpense, fetchAllExpenses } from "../controllers/expense.controllers.js";
+import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -157,4 +157,5 @@ router.route("/destroyCoupon/:id").delete(verifyJWT,isAdmin,destroyCoupon)
 // expense
 router.route("/add-expense").post(verifyJWT,isAdmin,addExpense)
 router.route("/fetchAllExpenses").get(verifyJWT,isAdmin,fetchAllExpenses)
+router.route("/fetchEquipmentsExpenses").get(verifyJWT,isAdmin,fetchEquipmentsExpenses)
 export default router;

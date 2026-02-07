@@ -64,4 +64,18 @@ const fetchAllExpenses = asyncHandler(async(req,res) => {
     )
 })
 
-export {addExpense,fetchAllExpenses}
+const fetchEquipmentsExpenses = asyncHandler(async(req,res) => {
+    const exp = (await Expense.find({})).filter((t) => t.category === "EQUIPMENT");
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            exp,
+            "expense regarding equipments are fetch sucessfully!"
+        )
+    )
+})
+
+export {addExpense,fetchAllExpenses,fetchEquipmentsExpenses}
