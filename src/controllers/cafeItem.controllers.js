@@ -310,6 +310,46 @@ const fetchCart = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, cart, "cart succesfully being fetched"));
 });
 
+// const checkout = asyncHandler(async (req, res) => {
+//   const { paymentMethod, upiRef } = req.body;
+//   const adminId = req.user._id;
+
+//   const cart = await CafeCart.findOne({ handledBy: adminId }).populate(
+//     "items.item"
+//   );
+
+//   if (!cart || cart.items.length === 0)
+//     throw new ApiError(400, "Cart is empty");
+
+//   const orderItems = cart.items.map((i) => ({
+//     item: i.item._id,
+//     quantity: i.quantity,
+//     name: i.name,
+//     priceAtPurchase: i.item.price,
+//   }));
+
+//   const order = await CafeOrder.create({
+//     items: orderItems,
+//     totalAmount: cart.totalAmount,
+//     paymentMethod,
+//     upiRef,
+//     handledBy: adminId,
+//   });
+
+//   await Transaction.create({
+//     source: "cafe",
+//     referenceId: order._id,
+//     paymentMethod,
+//     status: "success",
+//     amount: order.totalAmount,
+//     referenceModel:"CafeOrder"
+//   });
+
+//   await CafeCart.deleteOne({ _id: cart._id });
+
+//   res.json(new ApiResponse(201, order, "Order placed successfully"));
+// });
+
 const checkout = asyncHandler(async (req, res) => {
   const { paymentMethod, upiRef } = req.body;
   const adminId = req.user._id;
@@ -318,13 +358,14 @@ const checkout = asyncHandler(async (req, res) => {
     "items.item"
   );
 
-  if (!cart || cart.items.length === 0)
+  if (!cart || cart.items.length === 0) {
     throw new ApiError(400, "Cart is empty");
+  }
 
   const orderItems = cart.items.map((i) => ({
     item: i.item._id,
     quantity: i.quantity,
-    name: i.name,
+    name: i.item.name,
     priceAtPurchase: i.item.price,
   }));
 
@@ -334,21 +375,58 @@ const checkout = asyncHandler(async (req, res) => {
     paymentMethod,
     upiRef,
     handledBy: adminId,
+    discount:{
+      amount:cart.discount.amount || 0,
+      code:cart.discount.code || "",
+      typeOfDiscount:cart.discount.typeOfDiscount || "none",
+      value:cart.discount.value || 0
+    }
   });
 
   await Transaction.create({
     source: "cafe",
     referenceId: order._id,
+    referenceModel: "CafeOrder",
     paymentMethod,
     status: "success",
     amount: order.totalAmount,
-    referenceModel:"CafeOrder"
   });
+
+  for (const i of cart.items) {
+    const itemId = i.item._id;
+    const orderedQty = i.quantity;
+
+    const updatedItem = await CafeItem.findOneAndUpdate(
+      {
+        _id: itemId,
+        quantity: { $gte: orderedQty }, // 💀 prevents negative stock
+      },
+      {
+        $inc: { quantity: -orderedQty },
+      },
+      { new: true }
+    );
+
+    if (!updatedItem) {
+      throw new ApiError(
+        400,
+        `Insufficient stock for item: ${i.item.name}`
+      );
+    }
+
+    if (updatedItem.quantity === 0 && updatedItem.available) {
+      updatedItem.available = false;
+      await updatedItem.save();
+    }
+  }
 
   await CafeCart.deleteOne({ _id: cart._id });
 
-  res.json(new ApiResponse(201, order, "Order placed successfully"));
+  return res.json(
+    new ApiResponse(201, order, "Order placed successfully")
+  );
 });
+
 
 const decrementCartItem = asyncHandler(async (req, res) => {
   const { itemId } = req.body;
@@ -420,6 +498,21 @@ const incrementCartItem = asyncHandler(async (req, res) => {
   );
 });
 
+const fetchAllCafeOrders = asyncHandler(async(req,res) => {
+  const orders = await CafeOrder.find({handledBy:req.user._id}).sort({createdAt:-1})
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      orders,
+      "orders been fetched succesfully"
+    )
+  )
+})
+
+
 
 export {
   addCafeItem,
@@ -433,5 +526,6 @@ export {
   fetchCart,
   removeFromCart,
   decrementCartItem,
-  incrementCartItem
+  incrementCartItem,
+  fetchAllCafeOrders
 };

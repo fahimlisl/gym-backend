@@ -298,18 +298,127 @@ const addMonthsSafe = (date, months) => {
   return d;
 };
 
+// const renewalSubscription = asyncHandler(async (req, res) => {
+//   const userId = req.params.id;
+
+//   const user = await User.findById(userId);
+//   if (!user) throw new ApiError(404, "Member not found");
+
+//   const { plan, paymentStatus, price, startDate, paymentMethod  , discountType, discount,} = req.body;
+
+//   if (!plan || !price) {
+//     throw new ApiError(400, "Plan and price are required");
+//   }
+//   const start = parseDDMMYYYY(startDate);
+
+//   let monthsToAdd = 0;
+//   if (plan === "monthly") monthsToAdd = 1;
+//   else if (plan === "quarterly") monthsToAdd = 3;
+//   else if (plan === "half-yearly") monthsToAdd = 6;
+//   else if (plan === "yearly") monthsToAdd = 12;
+//   else throw new ApiError(400, "Invalid plan");
+
+//   const endDate = addMonthsSafe(start, monthsToAdd);
+//   let subscriptionDiscountAmount = 0;
+
+//   if (discountType === "percentage") {
+//     subscriptionDiscountAmount = (Number(price) * Number(discount || 0)) / 100;
+//   } else if (discountType === "flat") {
+//     subscriptionDiscountAmount = Number(discount || 0);
+//   }
+
+//   const renewal = await Subscription.findByIdAndUpdate(
+//     user.subscription,
+//     {
+//       $push: {
+//         subscription: {
+//           plan,
+//           price,
+//           startDate: start,
+//           endDate,
+//           status: "active",
+//           discountType,
+//           discount: Number(discount || 0),
+//           finalAmount: Number(price) - subscriptionDiscountAmount,
+//           paymentStatus: paymentStatus || "paid",
+//         },
+//       },
+//     },
+//     { new: true }
+//   );
+
+//   if (!renewal) {
+//     throw new ApiError(400, "Failed to renew subscription");
+//   }
+//   const latestSub = renewal.subscription[renewal.subscription.length - 1];
+
+//   const transaction = await Transaction.create({
+//     user: user._id,
+//     source: "subscription",
+//     referenceId: renewal._id,
+//     // subReferenceId:subscription.subscription[
+//     //     subscription.subscription.length - 1
+//     //   ]._id,
+//     // referenceId: latestSub._id,
+//     subReferenceId:latestSub,
+//     amount: Number(price) - subscriptionDiscountAmount,
+//     paymentMethod: paymentMethod || "cash",
+//     referenceModel:"Subscription"
+//   });
+
+//   if (!transaction) {
+//     await Subscription.findByIdAndUpdate(renewal._id, {
+//       $pop: { subscription: 1 },
+//     });
+
+//     throw new ApiError(400, "Failed to generate transaction");
+//   }
+
+//   try {
+//     await axios.post(process.env.N8N_WEBHOOK_URL, {
+//       eventType: "subscription_renewal",
+//       memberName: user.username,
+//       email: user.email,
+//       phoneNumber: user.phoneNumber,
+//       plan: plan,
+//       startDate: start.toISOString(),
+//       endDate: endDate.toISOString(),
+//       finalAmount: Number(price) - subscriptionDiscountAmount,
+//       renewalDate: new Date().toISOString(),
+//       renewalNumber: renewal.subscription.length
+//     });
+//   } catch (error) {
+//     console.error('Failed to trigger renewal email:', error.message);
+//   }
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, renewal, "Renewal completed successfully"));
+// });
 const renewalSubscription = asyncHandler(async (req, res) => {
   const userId = req.params.id;
 
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "Member not found");
 
-  const { plan, paymentStatus, price, startDate, paymentMethod  , discountType, discount,} = req.body;
+  const { plan, paymentStatus, price, startDate, paymentMethod, discountType, discount } = req.body;
 
   if (!plan || !price) {
     throw new ApiError(400, "Plan and price are required");
   }
-  const start = parseDDMMYYYY(startDate);
+
+  // Use today's date if startDate is not provided
+  let start;
+  if (!startDate) {
+    start = new Date(); // Default to today
+  } else {
+    start = parseDDMMYYYY(startDate);
+    
+    // Check if parseDDMMYYYY returned a valid date
+    if (!start || isNaN(start.getTime())) {
+      throw new ApiError(400, "Invalid start date format");
+    }
+  }
 
   let monthsToAdd = 0;
   if (plan === "monthly") monthsToAdd = 1;
@@ -319,6 +428,12 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   else throw new ApiError(400, "Invalid plan");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
+  
+  // Validate endDate
+  if (!endDate || isNaN(endDate.getTime())) {
+    throw new ApiError(400, "Failed to calculate end date");
+  }
+
   let subscriptionDiscountAmount = 0;
 
   if (discountType === "percentage") {
@@ -350,20 +465,17 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   if (!renewal) {
     throw new ApiError(400, "Failed to renew subscription");
   }
+  
   const latestSub = renewal.subscription[renewal.subscription.length - 1];
 
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
     referenceId: renewal._id,
-    // subReferenceId:subscription.subscription[
-    //     subscription.subscription.length - 1
-    //   ]._id,
-    // referenceId: latestSub._id,
-    subReferenceId:latestSub,
+    subReferenceId: latestSub,
     amount: Number(price) - subscriptionDiscountAmount,
     paymentMethod: paymentMethod || "cash",
-    referenceModel:"Subscription"
+    referenceModel: "Subscription"
   });
 
   if (!transaction) {
@@ -395,6 +507,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, renewal, "Renewal completed successfully"));
 });
+
 
 const editUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber } = req.body;

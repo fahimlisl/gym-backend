@@ -60,6 +60,20 @@ const cafeOrderSchema = new mongoose.Schema(
       ref: "CafeAdmin",
       required: true,
     },
+    discount: {
+      amount: {
+        type: Number,
+      },
+      typeOfDiscount: {
+        type: String,
+      },
+      value: {
+        type: Number,
+      },
+      code: {
+        type: String,
+      },
+    },
   },
   {
     timestamps: true,
