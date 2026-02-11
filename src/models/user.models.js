@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(
     diet:{
       type: Schema.Types.ObjectId,
       ref:"Diet"
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     }
   },
   { timestamps: true }

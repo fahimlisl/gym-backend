@@ -131,3 +131,5 @@ export const ptExpiryJob = () => {
 
   console.log("PT expiry cron scheduled (Daily at 12:10 AM)");
 };
+
+ptExpiryJob();

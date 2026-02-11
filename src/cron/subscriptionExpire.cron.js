@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { Subscription } from "../models/subscription.models.js";
+import { User } from "../models/user.models.js";
 import axios from "axios";
 
 console.log("subscription expiry cron loaded");
@@ -19,7 +20,7 @@ const expireSubscriptions = async () => {
 
     if (expiredSubs.length === 0) {
       console.log("[CRON] No subscriptions to expire");
-      return { success: true, expired: 0, emailsSent: 0 };
+      return { success: true, expired: 0, emailsSent: 0, usersDeactivated: 0 };
     }
 
     console.log(`[CRON] Found ${expiredSubs.length} subscription(s) with expired entries`);
@@ -49,6 +50,16 @@ const expireSubscriptions = async () => {
     );
 
     console.log(`[CRON] 💀 Expired ${result.modifiedCount} subscription(s)`);
+
+    // Deactivate users with expired subscriptions
+    const userIdsToDeactivate = expiredSubs.map(sub => sub.user?._id).filter(Boolean);
+    
+    const userUpdateResult = await User.updateMany(
+      { _id: { $in: userIdsToDeactivate } },
+      { $set: { isActive: false } }
+    );
+
+    console.log(`[CRON] 🔒 Deactivated ${userUpdateResult.modifiedCount} user(s)`);
 
     let emailsSent = 0;
     let emailsFailed = 0;
@@ -84,6 +95,7 @@ const expireSubscriptions = async () => {
     const summary = {
       success: true,
       expired: result.modifiedCount,
+      usersDeactivated: userUpdateResult.modifiedCount,
       emailsSent,
       emailsFailed,
       timestamp: new Date().toISOString()
@@ -112,17 +124,21 @@ export const testSubscriptionExpiry = async () => {
   return result;
 };
 
-// scheduled for 12:20 dialy night
-
 export const subscriptionExpiryJob = () => {
-  cron.schedule("20 0 * * *", async () => {
+  const job = cron.schedule("20 0 * * *", async () => {
     console.log("\n[CRON] ⏰ Subscription expiry job started at", new Date().toISOString());
     await expireSubscriptions();
     console.log("[CRON] ✅ Subscription expiry job completed\n");
+  }, {
+    scheduled: true,
+    timezone: "Asia/Kolkata"
   });
 
-  console.log("subscription expiry cron scheduled (Daily at 12:20 AM)");
+  console.log("✅ Subscription expiry cron scheduled (Daily at 12:20 AM IST)");
 };
+
+
+subscriptionExpiryJob()
 
 
 

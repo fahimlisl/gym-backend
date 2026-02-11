@@ -465,6 +465,18 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   if (!renewal) {
     throw new ApiError(400, "Failed to renew subscription");
   }
+
+  // marking isActive to true for user model 
+  await User.findByIdAndUpdate(userId,
+    {
+      $set:{
+        isActive:true
+      }
+    },
+    {
+      new:true
+    }
+  )
   
   const latestSub = renewal.subscription[renewal.subscription.length - 1];
 

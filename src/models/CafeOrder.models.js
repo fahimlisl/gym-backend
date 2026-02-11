@@ -30,6 +30,17 @@ const cafeOrderSchema = new mongoose.Schema(
       ref: "User",
       default: null, // optional (walk-in customer)
     },
+    user:{
+      name:{
+        type:String,
+      },
+      phoneNumber:{
+        type:Number
+      },
+      email:{
+        type:String
+      }
+    },
 
     totalAmount: {
       type: Number,

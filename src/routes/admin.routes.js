@@ -48,12 +48,14 @@ import {
   destroyCafeItem,
   editCafeItem,
   fetchAllCafeItems,
+  fetchEveryCafeOderOfAllStuff,
   fetchParticularCafeItem,
   toggleAvailabilty,
 } from "../controllers/cafeItem.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
+import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, markAttendance } from "../controllers/attendence.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -117,6 +119,9 @@ router
 router
   .route("/calculateTotalInLet")
   .get(verifyJWT, isAdmin, calculateTotalInLet);
+router
+  .route("/fetchAllCafeOrders")
+  .get(verifyJWT,isAdmin,fetchEveryCafeOderOfAllStuff)
 
 // revenew
 router.get("/dashboard-revenue", verifyJWT, isAdmin, fetchDashboardRevenue);
@@ -171,5 +176,15 @@ router.route("/test-expiry").get(
   const result = await testSubscriptionExpiry();
   res.json(result);
 });
+
+// attendence
+router.route("/mark/attendence").post(verifyJWT,isAdmin,markAttendance)
+router.route("/today/attendence").get(verifyJWT,isAdmin,getTodayAttendance)
+
+router.route("/month/attendence/:memberId").get(verifyJWT,isAdmin,getMemberMonthlyAttendance)
+
+// /api/v1/admin/month/attendence?month=2026-04
+router.route("/month/attendence").get(verifyJWT,isAdmin,getMonthlyAttendance)
+
 
 export default router;

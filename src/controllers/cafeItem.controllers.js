@@ -9,6 +9,7 @@ import {
 import { CafeCart } from "../models/cafeCart.models.js";
 import { CafeOrder } from "../models/cafeOrder.models.js";
 import { Transaction } from "../models/transaction.models.js";
+import { User } from "../models/user.models.js"
 
 const addCafeItem = asyncHandler(async (req, res) => {
   const {
@@ -351,7 +352,7 @@ const fetchCart = asyncHandler(async (req, res) => {
 // });
 
 const checkout = asyncHandler(async (req, res) => {
-  const { paymentMethod, upiRef } = req.body;
+  const { paymentMethod, upiRef,name, phoneNumber,email } = req.body;
   const adminId = req.user._id;
 
   const cart = await CafeCart.findOne({ handledBy: adminId }).populate(
@@ -369,17 +370,29 @@ const checkout = asyncHandler(async (req, res) => {
     priceAtPurchase: i.item.price,
   }));
 
+  const existingMember = await User.findOne({
+    $or:[
+      {email},{phoneNumber}
+    ]
+  })
+
   const order = await CafeOrder.create({
+    customer:existingMember?._id || null,
     items: orderItems,
     totalAmount: cart.totalAmount,
     paymentMethod,
     upiRef,
     handledBy: adminId,
     discount:{
-      amount:cart.discount.amount || 0,
-      code:cart.discount.code || "",
-      typeOfDiscount:cart.discount.typeOfDiscount || "none",
-      value:cart.discount.value || 0
+      amount:cart?.discount?.amount || 0,
+      code:cart?.discount?.code || "",
+      typeOfDiscount:cart?.discount?.typeOfDiscount || "none",
+      value:cart?.discount?.value || 0
+    },
+    user:{
+      name:existingMember?.username || name,
+      phoneNumber:existingMember?.phoneNumber || phoneNumber,
+      email:existingMember?.email || email
     }
   });
 
@@ -512,6 +525,19 @@ const fetchAllCafeOrders = asyncHandler(async(req,res) => {
   )
 })
 
+const fetchEveryCafeOderOfAllStuff = asyncHandler(async(req,res) => {
+  const orders = await CafeOrder.find({}).populate("handledBy","username").sort({createdAt: -1});
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      orders,
+      "all orders been fetched sueccessfully!"
+    )
+  )
+})
 
 
 export {
@@ -527,5 +553,6 @@ export {
   removeFromCart,
   decrementCartItem,
   incrementCartItem,
-  fetchAllCafeOrders
+  fetchAllCafeOrders,
+  fetchEveryCafeOderOfAllStuff
 };
