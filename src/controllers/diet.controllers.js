@@ -8,6 +8,7 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { User } from "../models/user.models.js";
 import { DB_NAME } from "../constants.js";
 import { MongoClient, ObjectId } from "mongodb";
+import mongoose from "mongoose";
 
 const generateDiet = asyncHandler(async (req, res) => {
   const { userId, goal, dietType, mealsPerDay = 5, weight } = req.body;
@@ -57,6 +58,53 @@ const generateDiet = asyncHandler(async (req, res) => {
   }
 
   res.status(201).json(new ApiResponse(201, diet, "Diet generated (draft)"));
+});
+
+const setDietMacros = asyncHandler(async (req, res) => {
+  const dietId = req.params.id;
+
+  // Convert safely FIRST
+  const protein = Number(req.body.protein);
+  const carbs = Number(req.body.carbs);
+  const fats = Number(req.body.fats);
+
+  if (
+    Number.isNaN(protein) ||
+    Number.isNaN(carbs) ||
+    Number.isNaN(fats)
+  ) {
+    throw new ApiError(400, "Invalid macro values");
+  }
+
+  const diet = await Diet.findById(dietId);
+
+  if (!diet) {
+    throw new ApiError(404, "Diet not found");
+  }
+
+  const macroCalories =
+    protein * 4 +
+    carbs * 4 +
+    fats * 9;
+
+  if (Math.abs(macroCalories - diet.calories) > 50) {
+    throw new ApiError(
+      400,
+      "Macro calories do not match total calories"
+    );
+  }
+
+  diet.desiredMacros = {
+    protein: { grams: protein },
+    carbs: { grams: carbs },
+    fats: { grams: fats },
+  };
+
+  await diet.save();
+
+  res.json(
+    new ApiResponse(200, diet, "Macros set successfully")
+  );
 });
 
 const foodItemInserction = asyncHandler(async (req, res) => {
@@ -140,6 +188,35 @@ const foodItemInserction = asyncHandler(async (req, res) => {
       )
     );
 });
+
+const removeItemFromDiet = asyncHandler(async(req,res) => {
+  const {foodId,userId} = req.params;
+
+  const diet = await Diet.findOneAndUpdate({user:userId},
+    {
+      $pull:{
+        foods:{
+          foodId: new mongoose.Types.ObjectId(foodId)
+        }
+      }
+    },
+    {
+      new:true
+    }
+  );
+  
+  if(!diet) throw new ApiError(400,"diet wasn't able to update, internal server error!");
+  
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      diet,
+      "diet have been updated successfully !"
+    )
+  )
+})
 
 const approveDiet = asyncHandler(async (req, res) => {
   const { dietId } = req.params;
@@ -245,5 +322,7 @@ export {
   approveDiet,
   getMyDiet,
   checkIfDietExists,
-  approveCheck
+  approveCheck,
+  setDietMacros,
+  removeItemFromDiet
 };

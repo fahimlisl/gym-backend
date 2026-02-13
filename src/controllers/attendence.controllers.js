@@ -2,9 +2,16 @@ import { Attendance } from "../models/attendence.models.js";
 import { User } from "../models/user.models.js";
 
 // helper
+// const getTodayDate = () => {
+//   return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+// };
 const getTodayDate = () => {
-  return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+  const now = new Date();
+  const offset = 5.5 * 60; 
+  const istTime = new Date(now.getTime() + offset * 60000);
+  return istTime.toISOString().split("T")[0];
 };
+
 
 export const markAttendance = async (req, res) => {
   try {

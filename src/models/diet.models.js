@@ -28,6 +28,10 @@ const foodSchema = new mongoose.Schema(
     sugar: {
       type: Number,
     },
+    foodId:{
+      type:Schema.Types.ObjectId,
+      ref:"Food"
+    }
   },
   { timestamps: true }
 );
@@ -74,7 +78,24 @@ const dietSchema = new mongoose.Schema(
       // enum: ["ai", "trainer"],
       // default: "ai",
     },
-
+    desiredMacros:{
+      protein: {
+        grams: { type: Number, default: 0 },
+        calories: { type: Number, default: 0 },
+      },
+      carbs: {
+        grams: { type: Number, default: 0 },
+        calories: { type: Number, default: 0 },
+      },
+      fats: {
+        grams: { type: Number, default: 0 },
+        calories: { type: Number, default: 0 },
+      },
+    },
+     macroCaloriesTotal: {
+      type: Number,
+      default: 0,
+    },
     status: {
       type: String,
       enum: ["draft", "approved"],
@@ -86,5 +107,16 @@ const dietSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+
+dietSchema.pre("save",function(next) {
+  this.desiredMacros.protein.calories = this.desiredMacros.protein.grams * 4;
+  this.desiredMacros.carbs.calories = this.desiredMacros.carbs.grams * 4;
+  this.desiredMacros.fats.calories = this.desiredMacros.fats.grams * 9;
+
+  this.macroCaloriesTotal = this.desiredMacros.protein.calories + this.desiredMacros.carbs.calories + this.desiredMacros.fats.calories
+  // next()
+})
+
 
 export const Diet = mongoose.model("Diet", dietSchema);

@@ -10,6 +10,8 @@ import {
   showParticularDiet,
   checkIfDietExists,
   approveCheck,
+  setDietMacros,
+  removeItemFromDiet,
 } from "../controllers/diet.controllers.js";
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
@@ -26,6 +28,8 @@ router.route("/logout").post(verifyJWT,logOutTrainer)
 router.post("/diet/generate", verifyJWT, 
     isTrainer,
      generateDiet);
+router.route("/diet/setMacros/:id").patch(verifyJWT,isTrainer,setDietMacros)
+
 router.patch("/diet/approve/:dietId", verifyJWT,
     isTrainer,
     approveDiet);
@@ -49,6 +53,7 @@ router.route("/addFood").post(verifyJWT,isTrainer,foodItemInserction)
 router.route("/diet/show/:id").get(verifyJWT,isTrainer,showParticularDiet)
 router.route("/diet/check/:id").get(verifyJWT,isTrainer,checkIfDietExists)
 router.route("/diet/check/status/:id").get(verifyJWT,isTrainer,approveCheck)
+router.route("/diet/:userId/food/remove/:foodId").patch(verifyJWT,isTrainer,removeItemFromDiet)
 
 
 // user 
