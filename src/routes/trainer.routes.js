@@ -12,6 +12,7 @@ import {
   approveCheck,
   setDietMacros,
   removeItemFromDiet,
+  createMeal,
 } from "../controllers/diet.controllers.js";
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
@@ -49,11 +50,12 @@ router.route("/getAllFoods").get(verifyJWT,isTrainer,getAllFoods)
 // diet kinda thigns 
 
 router.route("/addFoodtoDB").post(verifyJWT,isTrainer,addFood)
-router.route("/addFood").post(verifyJWT,isTrainer,foodItemInserction)
+router.route("/addFood/:mealId").post(verifyJWT,isTrainer,foodItemInserction)
 router.route("/diet/show/:id").get(verifyJWT,isTrainer,showParticularDiet)
 router.route("/diet/check/:id").get(verifyJWT,isTrainer,checkIfDietExists)
 router.route("/diet/check/status/:id").get(verifyJWT,isTrainer,approveCheck)
-router.route("/diet/:userId/food/remove/:foodId").patch(verifyJWT,isTrainer,removeItemFromDiet)
+router.route("/diet/:userId/food/remove/:foodId/:mealId").patch(verifyJWT,isTrainer,removeItemFromDiet)
+router.route("/diet/add/meal/:id").patch(verifyJWT,isTrainer,createMeal)
 
 
 // user 

@@ -107,8 +107,38 @@ const setDietMacros = asyncHandler(async (req, res) => {
   );
 });
 
+const createMeal = asyncHandler(async(req,res) => {
+  const dietId = req.params.id;
+  const {meal} = req.body; // will be checking wehather diet meal type is already added or not!
+  if(!meal) throw new ApiError(400,"meal field is must required!");
+  const die = await Diet.findById(dietId)
+  const i = die.meals.find((m) => m.meal === meal)
+
+  if(i) throw new ApiError(400,"meal type already exists!");
+
+  die.meals.push({meal})
+  await die.save();
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      die,
+      "meal type is added successfully"
+    )
+  )
+})
+
 const foodItemInserction = asyncHandler(async (req, res) => {
   const { userId, foods } = req.body;
+  const mealId = req.params.mealId;
+  if (!mongoose.Types.ObjectId.isValid(mealId)) {
+  throw new ApiError(400, "Invalid meal ID");
+}
+if (!mongoose.Types.ObjectId.isValid(userId)) {
+  throw new ApiError(400, "Invalid user ID");
+}
+
 
   if (!foods || !foods.length) {
     throw new ApiError(400, "No foods provided");
@@ -164,15 +194,30 @@ const foodItemInserction = asyncHandler(async (req, res) => {
     });
   });
 
+  // const updatedDiet = await Diet.findOneAndUpdate(
+  //   { user: userId },
+  //   {
+  //     $push: {
+  //       foods: { $each: preparedFoods },
+  //     },
+  //   },
+  //   { new: true }
+  // );
   const updatedDiet = await Diet.findOneAndUpdate(
-    { user: userId },
-    {
-      $push: {
-        foods: { $each: preparedFoods },
-      },
-    },
-    { new: true }
-  );
+  {
+    user: userId,
+    "meals._id": mealId
+  },
+  {
+    $push: {
+      "meals.$.foods": {
+        $each: preparedFoods
+      }
+    }
+  },
+  { new: true }
+);
+
 
   if (!updatedDiet) {
     throw new ApiError(500, "Failed to update diet");
@@ -190,13 +235,20 @@ const foodItemInserction = asyncHandler(async (req, res) => {
 });
 
 const removeItemFromDiet = asyncHandler(async(req,res) => {
-  const {foodId,userId} = req.params;
+  const {foodId,userId,mealId} = req.params;
 
-  const diet = await Diet.findOneAndUpdate({user:userId},
+
+  const diet = await Diet.findOneAndUpdate({
+    user:userId,
+    "meals._id":mealId
+  },
     {
       $pull:{
-        foods:{
-          foodId: new mongoose.Types.ObjectId(foodId)
+        // foods:{
+        //   foodId: new mongoose.Types.ObjectId(foodId)
+        // }
+        "meals.$.foods":{
+         foodId: new mongoose.Types.ObjectId(foodId)
         }
       }
     },
@@ -220,10 +272,12 @@ const removeItemFromDiet = asyncHandler(async(req,res) => {
 
 const approveDiet = asyncHandler(async (req, res) => {
   const { dietId } = req.params;
+  
+  const status = req.body?.status || "approved";
 
   const diet = await Diet.findByIdAndUpdate(
     dietId,
-    { status: "approved" },
+    { status: status || "approved" }, 
     { new: true }
   );
 
@@ -231,7 +285,11 @@ const approveDiet = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Diet not found");
   }
 
-  res.json(new ApiResponse(200, diet, "Diet approved successfully"));
+  const message = status === "draft" 
+    ? "Diet unlocked for editing" 
+    : "Diet approved successfully";
+
+  res.json(new ApiResponse(200, diet, message));
 });
 
 const getMyDiet = asyncHandler(async (req, res) => {
@@ -324,5 +382,6 @@ export {
   checkIfDietExists,
   approveCheck,
   setDietMacros,
-  removeItemFromDiet
+  removeItemFromDiet,
+  createMeal
 };

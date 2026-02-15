@@ -26,6 +26,7 @@ const addCafeItem = asyncHandler(async (req, res) => {
     tags,
     calories,
     purchasePrice,
+    barcode
   } = req.body;
   if (
     [
@@ -41,6 +42,7 @@ const addCafeItem = asyncHandler(async (req, res) => {
       calories,
       purchasePrice,
       quantity,
+      barcode
     ].some((t) => !t && t !== 0)
   ) {
     throw new ApiError(400, "these fields must required");
@@ -75,6 +77,7 @@ const addCafeItem = asyncHandler(async (req, res) => {
     calories,
     purchasePrice,
     quantity,
+    barcode,
     image: {
       url: upload.url,
       public_id: upload.public_id,
@@ -213,57 +216,121 @@ const toggleAvailabilty = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, item, "avaialbility toggled successfully"));
 });
 
+// const addToCart = asyncHandler(async (req, res) => {
+//   const { itemId, quantity = 1 } = req.body;
+//   const { paymentMethod } = req.body;
+//   const adminId = req.user._id; // cafe admin
+
+//   let cart = await CafeCart.findOne({ handledBy: adminId });
+//   let item = await CafeItem.findById(itemId);
+
+//   if (!cart) {
+//     cart = await CafeCart.create({
+//       handledBy: adminId,
+//       items: [],
+//     });
+//   }
+
+//   const existingItem = cart.items.find((i) => i.item.toString() === itemId);
+
+//   if (existingItem) {
+//     existingItem.quantity += quantity;
+//     cart.totalAmount += item.price * (quantity ? quantity : 1);
+//     await cart.save();
+//   } else {
+//     await CafeCart.findByIdAndUpdate(cart._id, {
+//       $push: {
+//         items: {
+//           item: itemId,
+//           quantity,
+//           name: item.name,
+//           price: item.price,
+//         },
+//       },
+//     });
+//     await CafeCart.findByIdAndUpdate(
+//       cart._id,
+//       {
+//         $set: {
+//           totalAmount:
+//             Number(cart.totalAmount || 0) + Number(item.price) * quantity,
+//           paymentMethod: paymentMethod || "cash",
+//         },
+//       },
+//       {
+//         new: true,
+//       }
+//     );
+//   }
+
+//   return res
+//     .status(200)
+//     .json(new ApiResponse(200, cart, "cart successfully updated"));
+// });
+
 const addToCart = asyncHandler(async (req, res) => {
-  const { itemId, quantity = 1 } = req.body;
-  const { paymentMethod } = req.body;
-  const adminId = req.user._id; // cafe admin
+  const { itemId, barcode, quantity = 1 } = req.body;
+  const adminId = req.user._id;
+
+  if (!itemId && !barcode) {
+    throw new ApiError(400, "ItemId or barcode is required");
+  }
+
+  const item = itemId
+    ? await CafeItem.findById(itemId)
+    : await CafeItem.findOne({ barcode });
+
+  if (!item) {
+    throw new ApiError(404, "Item not found");
+  }
+
+  if (!item.available) {
+    throw new ApiError(400, "Item is not available");
+  }
+
+  if (item.quantity < quantity) {
+    throw new ApiError(400, "Not enough stock available");
+  }
 
   let cart = await CafeCart.findOne({ handledBy: adminId });
-  let item = await CafeItem.findById(itemId);
 
   if (!cart) {
     cart = await CafeCart.create({
       handledBy: adminId,
       items: [],
+      totalAmount: 0,
+      paymentMethod: "cash",
     });
   }
 
-  const existingItem = cart.items.find((i) => i.item.toString() === itemId);
+  const existingItem = cart.items.find(
+    (i) => i.item.toString() === item._id.toString()
+  );
 
   if (existingItem) {
     existingItem.quantity += quantity;
-    cart.totalAmount += item.price * (quantity ? quantity : 1);
-    await cart.save();
   } else {
-    await CafeCart.findByIdAndUpdate(cart._id, {
-      $push: {
-        items: {
-          item: itemId,
-          quantity,
-          name: item.name,
-          price: item.price,
-        },
-      },
+    cart.items.push({
+      item: item._id,
+      quantity,
+      name: item.name,
+      price: item.price,
     });
-    await CafeCart.findByIdAndUpdate(
-      cart._id,
-      {
-        $set: {
-          totalAmount:
-            Number(cart.totalAmount || 0) + Number(item.price) * quantity,
-          paymentMethod: paymentMethod || "cash",
-        },
-      },
-      {
-        new: true,
-      }
-    );
   }
+
+  cart.totalAmount = cart.items.reduce(
+    (acc, i) => acc + i.price * i.quantity,
+    0
+  );
+
+  await cart.save();
 
   return res
     .status(200)
-    .json(new ApiResponse(200, cart, "cart successfully updated"));
+    .json(new ApiResponse(200, cart, "Cart updated successfully"));
 });
+
+
 
 const removeFromCart = asyncHandler(async (req, res) => {
   const { itemId } = req.body;

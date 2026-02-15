@@ -15,7 +15,7 @@ import { Trainer } from "../models/trainer.models.js";
 import axios from "axios"
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, email, phoneNumber, password } = req.body;
+  const { username, email, phoneNumber } = req.body;
 
   const {
     plan,
@@ -31,12 +31,25 @@ const registerUser = asyncHandler(async (req, res) => {
     discountOnAdFee,
   } = req.body;
 
+  const generateDefaultPassword = (username) => {
+  if (!username) return null;
+  const cleanName = username.trim().replace(/\s+/g, "");
+
+  const firstThree = cleanName.slice(0, 3).toLowerCase();
+
+  const randomThree = Math.floor(100 + Math.random() * 900);
+
+  return firstThree + randomThree;
+};
+
+const defaultPassword = generateDefaultPassword(username)
+
   if (!(plan && price)) {
     throw new ApiError(400, "plan and price must be provided");
   }
 
-  if ([username, phoneNumber, password].some(v => !v && v !== 0)) {
-    throw new ApiError(400, "username, phoneNumber, password are required");
+  if ([username, phoneNumber].some(v => !v && v !== 0)) {
+    throw new ApiError(400, "username, phoneNumber are required");
   }
 
   if (!(discountType && discountTypeOnAdFee)) {
@@ -65,11 +78,12 @@ const registerUser = asyncHandler(async (req, res) => {
     username,
     email: email || "",
     phoneNumber,
-    password,
+    password:defaultPassword,
     avatar: {
       url: avatarOnCloud.url,
       public_id: avatarOnCloud.public_id,
     },
+    isActive:true
   });
 
   if (!user) {
@@ -134,10 +148,6 @@ const registerUser = asyncHandler(async (req, res) => {
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
-    // referenceId:
-    //   subscription.subscription[
-    //     subscription.subscription.length - 1
-    //   ]._id,
     referenceId: subscription._id,
     subReferenceId:subscription.subscription[
         subscription.subscription.length - 1
@@ -168,7 +178,8 @@ const registerUser = asyncHandler(async (req, res) => {
       price: Number(price),
       admissionFee: Number(admissionFee),
       finalAmount: Number(price) + Number(admissionFee) - subscriptionDiscountAmount - admissionDiscountAmount,
-      registrationDate: new Date().toISOString()
+      registrationDate: new Date().toISOString(),
+      password:defaultPassword
     });
   } catch (error) {
     console.error('Failed to trigger n8n webhook:', error);

@@ -28,12 +28,26 @@ const foodSchema = new mongoose.Schema(
     sugar: {
       type: Number,
     },
-    foodId:{
-      type:Schema.Types.ObjectId,
-      ref:"Food"
-    }
+    foodId: {
+      type: Schema.Types.ObjectId,
+      ref: "Food",
+    },
   },
-  { timestamps: true }
+  { _id: true }
+);
+
+const mealSchema = new mongoose.Schema(
+  {
+    meal: {
+      type: String,
+      required: true,
+    },
+    foods: {
+      type: [foodSchema],
+      default: [],
+    },
+  },
+  { _id: true }
 );
 
 const dietSchema = new mongoose.Schema(
@@ -78,7 +92,7 @@ const dietSchema = new mongoose.Schema(
       // enum: ["ai", "trainer"],
       // default: "ai",
     },
-    desiredMacros:{
+    desiredMacros: {
       protein: {
         grams: { type: Number, default: 0 },
         calories: { type: Number, default: 0 },
@@ -92,7 +106,7 @@ const dietSchema = new mongoose.Schema(
         calories: { type: Number, default: 0 },
       },
     },
-     macroCaloriesTotal: {
+    macroCaloriesTotal: {
       type: Number,
       default: 0,
     },
@@ -101,22 +115,27 @@ const dietSchema = new mongoose.Schema(
       enum: ["draft", "approved"],
       default: "draft",
     },
-    foods:{
-      type:[foodSchema]
-  }
+    //   foods:{
+    //     type:[foodSchema]
+    // }
+    meals: {
+      type: [mealSchema],
+      default: [],
+    },
   },
   { timestamps: true }
 );
 
-
-dietSchema.pre("save",function(next) {
+dietSchema.pre("save", function () {
   this.desiredMacros.protein.calories = this.desiredMacros.protein.grams * 4;
   this.desiredMacros.carbs.calories = this.desiredMacros.carbs.grams * 4;
   this.desiredMacros.fats.calories = this.desiredMacros.fats.grams * 9;
 
-  this.macroCaloriesTotal = this.desiredMacros.protein.calories + this.desiredMacros.carbs.calories + this.desiredMacros.fats.calories
+  this.macroCaloriesTotal =
+    this.desiredMacros.protein.calories +
+    this.desiredMacros.carbs.calories +
+    this.desiredMacros.fats.calories;
   // next()
-})
-
+});
 
 export const Diet = mongoose.model("Diet", dietSchema);

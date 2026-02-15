@@ -6,7 +6,11 @@ const cafeItemSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
+    barcode:{
+      type:String,
+      // required:true, // as of now keeping it as not mandatory !
+      unique:true
+    },
     category: {
       // type: mongoose.Schema.Types.ObjectId,
       // ref: "CafeCategory",
