@@ -23,6 +23,7 @@ import {
 } from "../controllers/trainer.controllers.js";
 import {
   assignPT,
+  changePassword,
   destroyUser,
   editUser,
   fetchAllUser,
@@ -56,11 +57,16 @@ import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExp
 import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
 import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, markAttendance } from "../controllers/attendence.controllers.js";
+import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
+import { Admin } from "../models/admin.models.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
 router.route("/login").post(loginAdmin);
 router.route("/logout").post(verifyJWT, logOutAdmin);
+router.route("/change/password").patch(verifyJWT,isAdmin,changePassword)
+router.route("/reset/password/token").post(generateresetPasswordToken(Admin))
+router.route("/reset/password").post(validateOTPandChangePassword(Admin))
 
 // user/member
 router
@@ -171,11 +177,11 @@ router.route("/fetchEquipmentsExpenses").get(verifyJWT,isAdmin,fetchEquipmentsEx
 // cron expire routes 
 
 // make this fucntion more secure
-router.route("/test-expiry").get(
-  async (req, res) => {
-  const result = await testSubscriptionExpiry();
-  res.json(result);
-});
+// router.route("/test-expiry").get(
+//   async (req, res) => {
+//   const result = await testSubscriptionExpiry();
+//   res.json(result);
+// });
 
 // attendence
 router.route("/mark/attendence").post(verifyJWT,isAdmin,markAttendance)

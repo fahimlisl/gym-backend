@@ -9,12 +9,13 @@ import {
   uploadOnCloudinary,
 } from "../utils/cloudinary.js";
 import { User } from "../models/user.models.js";
+import axios from "axios";
 
 const registerTrainer = asyncHandler(async (req, res) => {
-  const { fullName, email, phoneNumber, password, experience, salary } =
+  const { fullName, email, phoneNumber, experience, salary } =
     req.body;
   if (
-    [fullName, phoneNumber, password, experience, salary].some(
+    [fullName, phoneNumber, experience, salary].some(
       (t) => !t && t !== 0
     )
   ) {
@@ -37,11 +38,27 @@ const registerTrainer = asyncHandler(async (req, res) => {
   const avatarOnCloud = await uploadOnCloudinary(avatar);
   if (!avatarOnCloud)
     throw new ApiError(400, "avatar wasn't able to upload on cloudianry");
+
+    const generateDefaultPassword = (username) => {
+  if (!username) return null;
+  const cleanName = username.trim().replace(/\s+/g, "");
+
+  const firstThree = cleanName.slice(0, 3).toLowerCase();
+
+  const randomThree = Math.floor(100 + Math.random() * 900);
+
+  return firstThree + randomThree;
+};
+
+const defaultPassword = generateDefaultPassword(fullName)
+
+
+
   const trainer = await Trainer.create({
     fullName,
     email,
     phoneNumber,
-    password,
+    password:defaultPassword,
     experience,
     avatar: {
       url: avatarOnCloud.url,
@@ -54,6 +71,18 @@ const registerTrainer = asyncHandler(async (req, res) => {
       500,
       "internal server erorr , wasn't able to create trainer"
     );
+
+    try {
+    await axios.post(process.env.N8N_WEBHOOK_URL, {
+      eventType: "new_trainer",
+      memberName: fullName,
+      email: email || '',
+      phoneNumber: phoneNumber,
+      password:defaultPassword
+    });
+  } catch (error) {
+    console.error('Failed to trigger n8n webhook:', error);
+  }
 
   return res
     .status(200)
@@ -233,7 +262,32 @@ const fetchAssignedStudents = asyncHandler(async (req, res) => {
     );
 });
 
-export { logOutTrainer, loginTrainier, registerTrainer };
+const changePassword = asyncHandler(async(req,res) => {
+  const {oldPassword,newPassword,confirmNewPassword} = req.body;
+  const userId = req.user._id;
+  if([oldPassword,newPassword,confirmNewPassword].some((t) => t?.trim() === "")){
+    throw new ApiError(400,"all feilds are required!");
+  }
+  const user = await Trainer.findById(userId);
+  const checkPassword = await user.isPasswordCorrect(oldPassword);
+  if(!checkPassword) throw new ApiError(400,"check old password, password didn't matched!");
+
+  if(!(newPassword === confirmNewPassword)) throw new ApiError(400,"new password and confrim new password must be same!");
+  user.password = newPassword;
+  await user.save()
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      user,
+      "password have been changed successfully!"
+    )
+  )
+})
+
+export { logOutTrainer, loginTrainier, registerTrainer ,changePassword};
 export {
   editTrainer,
   destroyTrainer,

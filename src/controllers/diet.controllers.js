@@ -129,6 +129,35 @@ const createMeal = asyncHandler(async(req,res) => {
   )
 })
 
+const removeMeal = asyncHandler(async(req,res) => {
+  const mealId = req.params.mealId;
+  const dietId = req.params.dietId;
+  if(!mealId) throw new ApiError(400,"wasn't able to find meal id!");
+  const updatedDiet = await Diet.findByIdAndUpdate(dietId,
+    {
+      $pull:{
+        meals:{
+          _id:mealId
+        }
+      }
+    },
+    {
+      new:true
+    }
+  );
+  if(!updatedDiet) throw new ApiError(400,"wasn't able to remove meal from diet!");
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      updatedDiet,
+      "diet has been updated successfully!"
+    )
+  )
+});
+
+
 const foodItemInserction = asyncHandler(async (req, res) => {
   const { userId, foods } = req.body;
   const mealId = req.params.mealId;
@@ -383,5 +412,6 @@ export {
   approveCheck,
   setDietMacros,
   removeItemFromDiet,
-  createMeal
+  createMeal,
+  removeMeal
 };

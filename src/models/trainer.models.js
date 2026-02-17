@@ -44,14 +44,16 @@ const trainerSchema = new mongoose.Schema({
                 ref:"User" // user means member
             }
         }
-    ]
+    ],
+    resetPasswordToken:{
+      type:String
+    }
 },{timestamps:true})
 
 
-trainerSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+trainerSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
-//   next();
 });
 
 trainerSchema.methods.isPasswordCorrect = async function (password) {

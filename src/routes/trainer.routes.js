@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fetchAssignedStudents, fetchParticularTrainer, loginTrainier, logOutTrainer } from "../controllers/trainer.controllers.js";
+import { changePassword, fetchAssignedStudents, fetchParticularTrainer, loginTrainier, logOutTrainer } from "../controllers/trainer.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 
 import {
@@ -13,16 +13,22 @@ import {
   setDietMacros,
   removeItemFromDiet,
   createMeal,
+  removeMeal,
 } from "../controllers/diet.controllers.js";
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
 import { addFood, getAllFoods } from "../controllers/food.controllers.js";
 import {upload} from "../middlewares/multer.middlewares.js"
+import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
+import { Trainer } from "../models/trainer.models.js";
 
 const router = Router();
 
 router.route("/login").post(loginTrainier)
 router.route("/logout").post(verifyJWT,logOutTrainer)
+router.route("/change/password").patch(verifyJWT,isTrainer,changePassword)
+router.route("/reset/password/token").post(generateresetPasswordToken(Trainer))
+router.route("/reset/password").post(validateOTPandChangePassword(Trainer))
 
 
 // Trainer / Admin
@@ -56,6 +62,7 @@ router.route("/diet/check/:id").get(verifyJWT,isTrainer,checkIfDietExists)
 router.route("/diet/check/status/:id").get(verifyJWT,isTrainer,approveCheck)
 router.route("/diet/:userId/food/remove/:foodId/:mealId").patch(verifyJWT,isTrainer,removeItemFromDiet)
 router.route("/diet/add/meal/:id").patch(verifyJWT,isTrainer,createMeal)
+router.route("/diet/remove/meal/:mealId/:dietId").patch(verifyJWT,isTrainer,removeMeal)
 
 
 // user 
