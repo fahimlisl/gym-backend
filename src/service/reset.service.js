@@ -81,7 +81,7 @@ const validateOTPandChangePassword = (Model) =>
       throw new ApiError(400, "unauthorized ! token didn't matched !");
 
     const k = decodedToken.OTP;
-    if (k !== otp) throw new ApiError(400, "otp didn't matched !");
+    if (k !== Number(otp)) throw new ApiError(400, "otp didn't matched !");
 
     const user = await Model.findById(decodedToken?._id).select(
       "-password -refreshToken"
