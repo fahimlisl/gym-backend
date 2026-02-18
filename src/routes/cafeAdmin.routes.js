@@ -4,6 +4,8 @@ import { verifyJWT } from "../middlewares/auth.middlewares.js";
 import { addCafeItem, addToCart, checkout, decrementCartItem, destroyCafeItem, editCafeItem, fetchAllCafeItems, fetchAllCafeOrders, fetchCart, fetchParticularCafeItem, incrementCartItem, removeFromCart, toggleAvailabilty } from "../controllers/cafeItem.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 import { applyCoupon, removeCoupon } from "../controllers/coupon.controllers.js";
+import { changePassword } from "../service/change.password.service.js";
+import { CafeAdmin } from "../models/cafeAdmin.models.js"
 
 const router = Router();
 
@@ -11,6 +13,7 @@ const router = Router();
 
 router.route("/login").post(loginCafeAdmin)
 router.route("/logout").post(verifyJWT,logoutCafeAdmin)
+router.route("/change/password").patch(verifyJWT,changePassword(CafeAdmin))
 
 // items 
 // router.route("/add-item").post(upload.single("image"),verifyJWT,addCafeItem)

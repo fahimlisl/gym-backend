@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { changePassword, fetchAssignedStudents, fetchParticularTrainer, loginTrainier, logOutTrainer } from "../controllers/trainer.controllers.js";
+import { fetchAssignedStudents, fetchParticularTrainer, loginTrainier, logOutTrainer } from "../controllers/trainer.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 
 import {
@@ -21,12 +21,13 @@ import { addFood, getAllFoods } from "../controllers/food.controllers.js";
 import {upload} from "../middlewares/multer.middlewares.js"
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import { Trainer } from "../models/trainer.models.js";
+import { changePassword } from "../service/change.password.service.js";
 
 const router = Router();
 
 router.route("/login").post(loginTrainier)
 router.route("/logout").post(verifyJWT,logOutTrainer)
-router.route("/change/password").patch(verifyJWT,isTrainer,changePassword)
+router.route("/change/password").patch(verifyJWT,isTrainer,changePassword(Trainer))
 router.route("/reset/password/token").post(generateresetPasswordToken(Trainer))
 router.route("/reset/password").post(validateOTPandChangePassword(Trainer))
 

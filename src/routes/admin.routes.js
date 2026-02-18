@@ -23,7 +23,6 @@ import {
 } from "../controllers/trainer.controllers.js";
 import {
   assignPT,
-  changePassword,
   destroyUser,
   editUser,
   fetchAllUser,
@@ -59,12 +58,13 @@ import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
 import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, markAttendance } from "../controllers/attendence.controllers.js";
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import { Admin } from "../models/admin.models.js";
+import { changePassword } from "../service/change.password.service.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
 router.route("/login").post(loginAdmin);
 router.route("/logout").post(verifyJWT, logOutAdmin);
-router.route("/change/password").patch(verifyJWT,isAdmin,changePassword)
+router.route("/change/password").patch(verifyJWT,isAdmin,changePassword(Admin))
 router.route("/reset/password/token").post(generateresetPasswordToken(Admin))
 router.route("/reset/password").post(validateOTPandChangePassword(Admin))
 
