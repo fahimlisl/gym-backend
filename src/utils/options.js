@@ -1,8 +1,6 @@
 const options = {
     httpOnly:true,
-    // secure:true,
-    // sameSite: "none", // will undo , while pushing to producitn for https
-    secure: false,
-sameSite: "lax"
+    secure: process.env.NODE_ENV === "production" ? true : false,
+    sameSite: processl.env.NODE_ENV === "production" ? "none" : "lax"
 }
 export {options}

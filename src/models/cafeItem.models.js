@@ -15,7 +15,7 @@ const cafeItemSchema = new mongoose.Schema(
       // type: mongoose.Schema.Types.ObjectId,
       // ref: "CafeCategory",
       type: String,
-      enum: ["protien shake", "coffee", "energy drink"], // add more and more as per requirements 
+      // enum: ["protien shake", "coffee", "energy drink"], // add more and more as per requirements 
       // need a diff model to store the categories
       required: true,
     },

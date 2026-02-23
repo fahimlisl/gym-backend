@@ -10,6 +10,58 @@ import { CafeCart } from "../models/cafeCart.models.js";
 import { CafeOrder } from "../models/cafeOrder.models.js";
 import { Transaction } from "../models/transaction.models.js";
 import { User } from "../models/user.models.js"
+import { CateGory } from "../models/category.cafeitem.models.js";
+
+const normalizeCategory = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, "")     
+    .replace(/[^a-z0-9]/g, ""); 
+};
+
+export const addCateGory = asyncHandler(async(req,res) => {
+  let {name} = req.body;
+  name = name.trim();
+
+  const normalizedName = normalizeCategory(name);
+  const existing = await CateGory.findOne({ normalizedName });
+  if (existing) {
+    throw new ApiError(400, "Category already exists!");
+  }
+  const category = await CateGory.create({
+    name,
+    normalizedName,
+  });
+  if (!category) {
+    throw new ApiError(
+      500,
+      "Internal server error, unable to create category"
+    );
+  }
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      category,
+      "category added successfully!"
+    )
+  )
+})
+
+export const getCafeCategories = asyncHandler(async(req,res) => {
+  const cate = await CateGory.find({});
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      cate,
+      "categories are successfully been fetched!"
+    )
+  )
+})
 
 const addCafeItem = asyncHandler(async (req, res) => {
   const {
@@ -42,7 +94,7 @@ const addCafeItem = asyncHandler(async (req, res) => {
       calories,
       purchasePrice,
       quantity,
-      barcode
+      // barcode // need to check weahter in forntend , and need conformation from authority
     ].some((t) => !t && t !== 0)
   ) {
     throw new ApiError(400, "these fields must required");
@@ -60,10 +112,11 @@ const addCafeItem = asyncHandler(async (req, res) => {
   const imageU = req.file.buffer;
 
   const upload = await uploadOnCloudinary(imageU);
-
+  const cate = await CateGory.findOne({name:category})
+  if(!cate) throw new ApiError(400,"cateogry wasn't able to found , kindly check and add!");
   const item = await CafeItem.create({
     name,
-    category,
+    category:cate.name,
     description,
     macros: {
       protein: protien,

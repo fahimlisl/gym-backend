@@ -45,11 +45,13 @@ import {
 } from "../controllers/cafeAdmin.controllers.js";
 import {
   addCafeItem,
+  addCateGory,
   destroyCafeItem,
   editCafeItem,
   fetchAllCafeItems,
   fetchEveryCafeOderOfAllStuff,
   fetchParticularCafeItem,
+  getCafeCategories,
   toggleAvailabilty,
 } from "../controllers/cafeItem.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExpire } from "../controllers/coupon.controllers.js";
@@ -157,6 +159,8 @@ router
 router
   .route("/toggleAvailability/:id")
   .patch(verifyJWT, isAdmin, toggleAvailabilty);
+router.route("/add/cafe/category").post(verifyJWT,addCateGory);
+router.route("/get/cafe/categories").get(verifyJWT,isAdmin,getCafeCategories)
 
 
 // coupon 
