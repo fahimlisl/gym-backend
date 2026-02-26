@@ -194,54 +194,132 @@ const defaultPassword = generateDefaultPassword(username)
   );
 });
 
+// const loginUser = asyncHandler(async (req, res) => {
+//   const { email, phoneNumber, password } = req.body;
+
+//   if (!(email || phoneNumber))
+//     throw new ApiError(400, "atleast one field is required");
+//   if (!password) throw new ApiError(400, "password must required");
+
+//   const user = await User.findOne({
+//     $or: [{ email }, { phoneNumber }],
+//   }); // can use select to send only resitricted response
+//   if (!user) throw new ApiError(400, "user wasn't able to found");
+//   const checkPassword = await user.isPasswordCorrect(password);
+//   if (!checkPassword) throw new ApiError(400, "crednetials doesn't match");
+
+//   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+//     user._id,
+//     User
+//   );
+
+//   return res
+//     .status(200)
+//     .cookie("accessToken", accessToken, options)
+//     .cookie("refreshToken", refreshToken, options)
+//     .json(new ApiResponse(200, user, "user logged in successfully"));
+// });
+
+// const logOutUser = asyncHandler(async (req, res) => {
+//   const userId = req.user._id;
+
+//   const user = await User.findByIdAndUpdate(
+//     userId,
+//     {
+//       $unset: {
+//         refreshToken: "",
+//       },
+//     },
+//     {
+//       new: true,
+//     }
+//   );
+//   if (!user) throw new ApiError(400, "unauthorized access");
+
+//   return res
+//     .status(200)
+//     .clearCookie("refreshToken", options)
+//     .clearCookie("accessToken", options)
+//     .json(new ApiResponse(200, {}, "user logged out successfully"));
+// });
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+};
+
 const loginUser = asyncHandler(async (req, res) => {
   const { email, phoneNumber, password } = req.body;
 
-  if (!(email || phoneNumber))
-    throw new ApiError(400, "atleast one field is required");
-  if (!password) throw new ApiError(400, "password must required");
+  if (!(email || phoneNumber)) {
+    throw new ApiError(400, "Email or phone number required");
+  }
+
+  if (!password) {
+    throw new ApiError(400, "Password required");
+  }
 
   const user = await User.findOne({
     $or: [{ email }, { phoneNumber }],
-  }); // can use select to send only resitricted response
-  if (!user) throw new ApiError(400, "user wasn't able to found");
-  const checkPassword = await user.isPasswordCorrect(password);
-  if (!checkPassword) throw new ApiError(400, "crednetials doesn't match");
+  });
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-    user._id,
-    User
+  if (!user) {
+    throw new ApiError(401, "User not found");
+  }
+
+  const isMatch = await user.isPasswordCorrect(password);
+
+  if (!isMatch) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshToken(user._id, User);
+
+  const safeUser = await User.findById(user._id).select(
+    "-password -refreshToken"
   );
 
-  return res
-    .status(200)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
-    .json(new ApiResponse(200, user, "user logged in successfully"));
+  // Set cookies for web users
+  res.cookie("accessToken", accessToken, cookieOptions);
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  return res.status(200).json({
+    success: true,
+    message: "User logged in successfully",
+    user: safeUser,
+    accessToken,
+    refreshToken,
+  });
 });
 
 const logOutUser = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  await User.findByIdAndUpdate(req.user._id, {
+    $unset: { refreshToken: 1 },
+  });
 
-  const user = await User.findByIdAndUpdate(
-    userId,
-    {
-      $unset: {
-        refreshToken: "",
-      },
-    },
-    {
-      new: true,
-    }
-  );
-  if (!user) throw new ApiError(400, "unauthorized access");
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
 
-  return res
-    .status(200)
-    .clearCookie("refreshToken", options)
-    .clearCookie("accessToken", options)
-    .json(new ApiResponse(200, {}, "user logged out successfully"));
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "User logged out successfully",
+  });
 });
+
 
 const destroyUser = asyncHandler(async (req, res) => {
   const userId = req.params.id;
