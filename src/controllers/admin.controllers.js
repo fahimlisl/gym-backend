@@ -37,17 +37,20 @@ const registerAdmin = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, admin, "admin created sucessfully"));
 });
 
-
+const cookieOptions = {
+  httpOnly: true,
+  secure: true,      
+  sameSite: "none",    
+  path: "/",
+};
 
 const loginAdmin = asyncHandler(async (req, res) => {
   const { phoneNumber, email, password } = req.body;
-
   if (!(phoneNumber || email)) {
-    throw new ApiError(401, "Phone Number or email requied");
+    throw new ApiError(400, "Phone number or email required");
   }
-
   if (!password) {
-    throw new ApiError(401, "password required");
+    throw new ApiError(400, "Password required");
   }
 
   const loginUser = await Admin.findOne({
@@ -55,69 +58,58 @@ const loginAdmin = asyncHandler(async (req, res) => {
   });
 
   if (!loginUser) {
-    throw new ApiError(401, "user doesn't exist");
+    throw new ApiError(401, "User doesn't exist");
   }
 
-  const checkPassword = await loginUser.isPasswordCorrect(password);
+  const isMatch = await loginUser.isPasswordCorrect(password);
 
-  if (!checkPassword) {
-    throw new ApiError(401, "please enter correct password");
+  if (!isMatch) {
+    throw new ApiError(401, "Incorrect password");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-    loginUser._id,
-    Admin
-  );
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshToken(loginUser._id, Admin);
 
-  const loggedInUserAlready = await Admin.findById(loginUser._id).select(
+  const safeUser = await Admin.findById(loginUser._id).select(
     "-password -refreshToken"
   );
 
-  return res
-    .status(200)
-    .cookie("refreshToken", refreshToken, options)
-    .cookie("accessToken", accessToken, options)
-    .json(
-      new ApiResponse(
-        200,
-        { loginUser: loggedInUserAlready, accessToken, refreshToken },
-        "admin logged in successfully"
-      )
-    );
+  res.cookie("accessToken", accessToken, cookieOptions);
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  return res.status(200).json({
+    success: true,
+    message: "Admin logged in successfully",
+    loginUser: safeUser,
+    accessToken,
+    refreshToken,
+  });
 });
 
 
 const logOutAdmin = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  await Admin.findByIdAndUpdate(req.user._id, {
+    $unset: { refreshToken: 1 },
+  });
 
-  if (!userId) {
-    throw new ApiError(
-      400,
-      "userId wasn't able to found , unauthroized access"
-    );
-  }
-  const user = await Admin.findById(req.user._id);
-  if (!user) {
-    throw new ApiError(
-      400,
-      "user isn't logged in yet , or unauthorized access"
-    );
-  }
-  await Admin.findByIdAndUpdate(
-    req.user._id,
-    {
-      $unset: { refreshToken: "" },
-    },
-    {
-      new: true,
-    }
-  );
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
 
-  return res
-    .status(200)
-    .clearCookie("refreshToken", options)
-    .clearCookie("accessToken", options)
-    .json(new ApiResponse(200, {}, `admin logged out successfully`));
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Admin logged out successfully",
+  });
 });
 
 

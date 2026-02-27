@@ -89,69 +89,83 @@ const defaultPassword = generateDefaultPassword(fullName)
     .json(new ApiResponse(200, trainer, "trainer created successfully"));
 });
 
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+};
+
 const loginTrainier = asyncHandler(async (req, res) => {
   const { email, phoneNumber, password } = req.body;
+
   if (!(email || phoneNumber)) {
-    throw new ApiError(400, "email or phone number required");
+    throw new ApiError(400, "Email or phone number required");
   }
-  const check = await Trainer.findOne({
+
+  if (!password) {
+    throw new ApiError(400, "Password required");
+  }
+
+  const trainer = await Trainer.findOne({
     $or: [{ email }, { phoneNumber }],
   });
-  if (!check) {
-    throw new ApiError(400, "trainer wasn't able to found");
-  }
-  if (!password) {
-    throw new ApiError(400, "password must requied");
-  }
-  const checkPassword = await check.isPasswordCorrect(password);
 
-  if (!checkPassword) {
-    throw new ApiError(400, "password didn't match , invalid crednetials");
+  if (!trainer) {
+    throw new ApiError(401, "Trainer not found");
   }
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
-    check._id,
-    Trainer
+
+  const isMatch = await trainer.isPasswordCorrect(password);
+
+  if (!isMatch) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshToken(trainer._id, Trainer);
+
+  const safeTrainer = await Trainer.findById(trainer._id).select(
+    "-password -refreshToken"
   );
 
-  return res
-    .status(200)
-    .cookie("refreshToken", refreshToken, options)
-    .cookie("accessToken", accessToken, options)
-    .json(new ApiResponse(200, check, "trainer logged in successfully"));
+  res.cookie("accessToken", accessToken, cookieOptions);
+  res.cookie("refreshToken", refreshToken, cookieOptions);
+
+  return res.status(200).json({
+    success: true,
+    message: "Trainer logged in successfully",
+    user: safeTrainer,
+    accessToken,
+    refreshToken,
+  });
 });
 
 const logOutTrainer = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
+  await Trainer.findByIdAndUpdate(req.user._id, {
+    $unset: { refreshToken: 1 },
+  });
 
-  if (!userId) {
-    throw new ApiError(
-      400,
-      "userId wasn't able to found , unauthroized access"
-    );
-  }
-  const user = await Trainer.findById(req.user._id);
-  if (!user) {
-    throw new ApiError(
-      400,
-      "user isn't logged in yet , or unauthorized access"
-    );
-  }
-  await Trainer.findByIdAndUpdate(
-    req.user._id,
-    {
-      $unset: { refreshToken: "" },
-    },
-    {
-      new: true,
-    }
-  );
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
 
-  return res
-    .status(200)
-    .clearCookie("refreshToken", options)
-    .clearCookie("accessToken", options)
-    .json(new ApiResponse(200, {}, `admin logged out successfully`));
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+
+  return res.status(200).json({
+    success: true,
+    message: "Trainer logged out successfully",
+  });
 });
+
 
 const editTrainer = asyncHandler(async (req, res) => {
   const { fullName, email, phoneNumber, experience, salary } = req.body;
