@@ -60,6 +60,26 @@ const generateDiet = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, diet, "Diet generated (draft)"));
 });
 
+const editCalories = asyncHandler(async(req,res) => {
+  const dietId = req.params.dietId;
+  const {calories} = req.body;
+  const diet = await Diet.findById(dietId);
+  if (!diet) {
+    throw new ApiError(404, "Diet not found");
+  }
+  diet.calories = calories;
+  await diet.save({validateBeforeSave:false})
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      calories,
+      "diet has been updated successfully!"
+    )
+  )
+})
+
 const setDietMacros = asyncHandler(async (req, res) => {
   const dietId = req.params.id;
 
@@ -413,5 +433,6 @@ export {
   setDietMacros,
   removeItemFromDiet,
   createMeal,
-  removeMeal
+  removeMeal,
+  editCalories
 };

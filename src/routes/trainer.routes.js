@@ -14,6 +14,7 @@ import {
   removeItemFromDiet,
   createMeal,
   removeMeal,
+  editCalories,
 } from "../controllers/diet.controllers.js";
 
 import { isTrainer } from "../middlewares/isTrainer.middlewares.js";
@@ -64,6 +65,7 @@ router.route("/diet/check/status/:id").get(verifyJWT,isTrainer,approveCheck)
 router.route("/diet/:userId/food/remove/:foodId/:mealId").patch(verifyJWT,isTrainer,removeItemFromDiet)
 router.route("/diet/add/meal/:id").patch(verifyJWT,isTrainer,createMeal)
 router.route("/diet/remove/meal/:mealId/:dietId").patch(verifyJWT,isTrainer,removeMeal)
+router.route("/diet/edit/calories/:dietId").patch(verifyJWT,isTrainer,editCalories)
 
 
 // user 
