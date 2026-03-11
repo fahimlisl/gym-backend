@@ -178,6 +178,7 @@ const editCafeItem = asyncHandler(async (req, res) => {
     available,
     tags,
     calories,
+    stock
   } = req.body;
   if (
     !name &&
@@ -190,10 +191,12 @@ const editCafeItem = asyncHandler(async (req, res) => {
     !isVeg &&
     !available &&
     !tags &&
-    !calories
+    !calories &&
+    !stock
   ) {
     throw new ApiError(400, "at least one field is required to edit item");
   }
+  
   const item = await CafeItem.findById(itemId);
   if (!item) throw new ApiError(400, "wasn't able to find item");
   const update = await CafeItem.findByIdAndUpdate(
@@ -204,7 +207,7 @@ const editCafeItem = asyncHandler(async (req, res) => {
         category: category ?? item.category,
         description: description ?? item.description,
         macros: {
-          protien: protien ?? item.macros.protein,
+          protein: protien ?? item.macros.protein,
           carbs: carbs ?? item.macros.carbs,
           fats: fat ?? item.macros.fats,
         },
@@ -213,6 +216,7 @@ const editCafeItem = asyncHandler(async (req, res) => {
         // for as of now not giving tags to be updated
         calories: calories ?? item.calories,
         price: price ?? item.price,
+        quantity: stock ?? item.quantity
       },
     },
     {
