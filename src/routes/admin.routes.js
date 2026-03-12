@@ -61,6 +61,7 @@ import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, m
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import { Admin } from "../models/admin.models.js";
 import { changePassword } from "../service/change.password.service.js";
+import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, removeBenefits } from "../controllers/plans.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -119,6 +120,16 @@ router.route("/fetchAllTrainer").get(verifyJWT, isAdmin, fetchAllTrainer);
 router
   .route("/fetchParticularTrainer/:id")
   .get(verifyJWT, isAdmin, fetchParticularTrainer);
+
+// pt plans things
+router.route("/plan/add").post(verifyJWT,isAdmin,addPlan)
+router.route("/plan/edit/:planId").patch(verifyJWT,isAdmin,editPlan)
+router.route("/plan/destroy/:planId").delete(verifyJWT,isAdmin,destroyPlan)
+router.route("/plan/fetch/all").get(verifyJWT,isAdmin,fetchAllPlans)
+router.route("/plan/add/benefit/:planId").patch(verifyJWT,isAdmin,addBenefits)
+router.route("/plan/remove/benefit/:planId/:subBenefitId").patch(verifyJWT,isAdmin,removeBenefits)
+
+
 
 // transections
 router
