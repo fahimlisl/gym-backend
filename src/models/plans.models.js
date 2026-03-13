@@ -27,7 +27,8 @@ const planSchema = new mongoose.Schema({
     },
     duration:{
         type:String,
-        enum:["Monthly","Quaterly","Yearly","Half-Yearly"],
+        // enum:["Monthly","Quaterly","Yearly","Half-Yearly"],
+        enum:["monthly","quaterly","yearly","half-yearly"],
     },
     bio:{
         type:String

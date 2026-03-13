@@ -1,10 +1,16 @@
-import mongoose,{Schema} from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
-const regularSchema = new mongoose.Schema({
-  trainer: {
+const tempPtBillSchema = new mongoose.Schema(
+  {
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    trainer: {
       type: Schema.Types.ObjectId,
       ref: "Trainer",
-      // required: true, 
+      //   required: true, // need to modify as we go on the go
     },
 
     plan: {
@@ -13,23 +19,13 @@ const regularSchema = new mongoose.Schema({
       required: true,
     },
 
-    startDate: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
-
-    endDate: {
-      type: Date,
-    },
-
     status: {
       type: String,
-      enum: ["active","paused", "expired"], // will use pause if starts at a particular date
+      enum: ["active", "paused", "expired"],
       default: "active",
     },
 
-     basePrice: {
+    basePrice: {
       type: Number,
       required: true,
     },
@@ -48,7 +44,30 @@ const regularSchema = new mongoose.Schema({
         type: String,
       },
     },
-        paymentMethod: {
+
+    finalPrice: {
+      type: Number,
+      required: true,
+    },
+
+    image: {
+      // will be screenshot or proof
+      url: {
+        type: String,
+        required: true,
+      },
+      public_id: {
+        type: String,
+        required: true,
+      },
+    },
+
+    isApproved: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    paymentMethod: {
       type: String,
       enum: ["cash", "upi", "card", "netbanking"],
       required: true,
@@ -60,25 +79,8 @@ const regularSchema = new mongoose.Schema({
         return this.paymentMethod === "upi";
       },
     },
-
-    finalPrice: {
-      type: Number,
-      required: true,
-    },
-},{timestamps:true})
-
-const ptillSchema = new mongoose.Schema({
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    subscription:{
-      type:[regularSchema]
-    }
-    
   },
   { timestamps: true }
 );
 
-export const Ptbill = mongoose.model("Ptbill",ptillSchema)
+export const TempPtBill = mongoose.model("TempPtBill", tempPtBillSchema);

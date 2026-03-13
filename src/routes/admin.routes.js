@@ -62,6 +62,7 @@ import { generateresetPasswordToken , validateOTPandChangePassword } from "../se
 import { Admin } from "../models/admin.models.js";
 import { changePassword } from "../service/change.password.service.js";
 import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, removeBenefits } from "../controllers/plans.controllers.js";
+import { approve, fetchAllRequests, fetchParticularRequest } from "../controllers/user.ptbill.temp.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -88,10 +89,10 @@ router
   .get(verifyJWT, isAdmin, fetchParticularUser);
 // personal traninng
 router
-  .route("/personal-training/:member_id/:trainer_id")
+  .route("/personal-training/:member_id/:trainer_id/:plan_id")
   .post(verifyJWT, isAdmin, assignPT);
 router
-  .route("/personal-training-renewal/:member_id/:trainer_id")
+  .route("/personal-training-renewal/:member_id/:trainer_id/:plan_id")
   .post(verifyJWT, isAdmin, renewalPtSub);
 
 // supplement
@@ -128,6 +129,11 @@ router.route("/plan/destroy/:planId").delete(verifyJWT,isAdmin,destroyPlan)
 router.route("/plan/fetch/all").get(verifyJWT,isAdmin,fetchAllPlans)
 router.route("/plan/add/benefit/:planId").patch(verifyJWT,isAdmin,addBenefits)
 router.route("/plan/remove/benefit/:planId/:subBenefitId").patch(verifyJWT,isAdmin,removeBenefits)
+
+// approval
+router.route("/pt/request/approval/:tempBillId").post(verifyJWT,isAdmin,approve)
+router.route("/pt/request/all").get(verifyJWT,isAdmin,fetchAllRequests)
+router.route("/pt/request/:reqId").get(verifyJWT,isAdmin,fetchParticularRequest)
 
 
 

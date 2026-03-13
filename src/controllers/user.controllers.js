@@ -13,6 +13,8 @@ import { Transaction } from "../models/transaction.models.js";
 import { Ptbill } from "../models/ptbill.models.js";
 import { Trainer } from "../models/trainer.models.js";
 import axios from "axios"
+import { Coupon } from "../models/coupon.models.js";
+import { Plan } from "../models/plans.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, phoneNumber } = req.body;
@@ -337,103 +339,6 @@ const addMonthsSafe = (date, months) => {
   return d;
 };
 
-// const renewalSubscription = asyncHandler(async (req, res) => {
-//   const userId = req.params.id;
-
-//   const user = await User.findById(userId);
-//   if (!user) throw new ApiError(404, "Member not found");
-
-//   const { plan, paymentStatus, price, startDate, paymentMethod  , discountType, discount,} = req.body;
-
-//   if (!plan || !price) {
-//     throw new ApiError(400, "Plan and price are required");
-//   }
-//   const start = parseDDMMYYYY(startDate);
-
-//   let monthsToAdd = 0;
-//   if (plan === "monthly") monthsToAdd = 1;
-//   else if (plan === "quarterly") monthsToAdd = 3;
-//   else if (plan === "half-yearly") monthsToAdd = 6;
-//   else if (plan === "yearly") monthsToAdd = 12;
-//   else throw new ApiError(400, "Invalid plan");
-
-//   const endDate = addMonthsSafe(start, monthsToAdd);
-//   let subscriptionDiscountAmount = 0;
-
-//   if (discountType === "percentage") {
-//     subscriptionDiscountAmount = (Number(price) * Number(discount || 0)) / 100;
-//   } else if (discountType === "flat") {
-//     subscriptionDiscountAmount = Number(discount || 0);
-//   }
-
-//   const renewal = await Subscription.findByIdAndUpdate(
-//     user.subscription,
-//     {
-//       $push: {
-//         subscription: {
-//           plan,
-//           price,
-//           startDate: start,
-//           endDate,
-//           status: "active",
-//           discountType,
-//           discount: Number(discount || 0),
-//           finalAmount: Number(price) - subscriptionDiscountAmount,
-//           paymentStatus: paymentStatus || "paid",
-//         },
-//       },
-//     },
-//     { new: true }
-//   );
-
-//   if (!renewal) {
-//     throw new ApiError(400, "Failed to renew subscription");
-//   }
-//   const latestSub = renewal.subscription[renewal.subscription.length - 1];
-
-//   const transaction = await Transaction.create({
-//     user: user._id,
-//     source: "subscription",
-//     referenceId: renewal._id,
-//     // subReferenceId:subscription.subscription[
-//     //     subscription.subscription.length - 1
-//     //   ]._id,
-//     // referenceId: latestSub._id,
-//     subReferenceId:latestSub,
-//     amount: Number(price) - subscriptionDiscountAmount,
-//     paymentMethod: paymentMethod || "cash",
-//     referenceModel:"Subscription"
-//   });
-
-//   if (!transaction) {
-//     await Subscription.findByIdAndUpdate(renewal._id, {
-//       $pop: { subscription: 1 },
-//     });
-
-//     throw new ApiError(400, "Failed to generate transaction");
-//   }
-
-//   try {
-//     await axios.post(process.env.N8N_WEBHOOK_URL, {
-//       eventType: "subscription_renewal",
-//       memberName: user.username,
-//       email: user.email,
-//       phoneNumber: user.phoneNumber,
-//       plan: plan,
-//       startDate: start.toISOString(),
-//       endDate: endDate.toISOString(),
-//       finalAmount: Number(price) - subscriptionDiscountAmount,
-//       renewalDate: new Date().toISOString(),
-//       renewalNumber: renewal.subscription.length
-//     });
-//   } catch (error) {
-//     console.error('Failed to trigger renewal email:', error.message);
-//   }
-
-//   return res
-//     .status(200)
-//     .json(new ApiResponse(200, renewal, "Renewal completed successfully"));
-// });
 const renewalSubscription = asyncHandler(async (req, res) => {
   const userId = req.params.id;
 
@@ -642,38 +547,90 @@ const fetchParticularUser = asyncHandler(async (req, res) => {
 const assignPT = asyncHandler(async (req, res) => {
   const userId = req.params.member_id;
   const trainerId = req.params.trainer_id;
-  const { plan, price, startDate, status, paymentMethod } = req.body;
-  // stauts will be evaluated via backend
-  if (!(plan || price))
-    throw new ApiError(400, "planType and price must required");
+  const planId = req.params.plan_id;
+  const {paymentMethod,ref,startDate} = req.body;
+  const plan = await Plan.findById(planId)
 
-  const start = parseDDMMYYYY(startDate);
+  const { coupon } = req.body;
+  const c = await Coupon.findOne({code:coupon});
+    if (coupon) {
+      if (!c) {
+        throw new ApiError(
+          400,
+          "coupon isn't able to find, contact administration!"
+        );
+      }
+      if (!c.isActive)
+        throw new ApiError(400, "coupon is not active! contact administrator");
+      if (c.category !== "PERSONAL TRAINING")
+        throw new ApiError(400, "coupon is not applicable on this category");
+      if (c.minCartAmount > plan.finalPrice)
+        throw new ApiError(
+          400,
+          "coupon is not applicable, minimum Cart amount must exceed!"
+        );
+    }
+
+  if (!(plan)){
+    throw new ApiError(400, "plan Type must required");
+  }
+  const d = startDate || new Date()
+  const start = parseDDMMYYYY(d);
   if (!start) {
   throw new ApiError(
     400,
     "Invalid startDate. Use DD/MM/YYYY or YYYY-MM-DD"
   );
-}
+  }
 
   let monthsToAdd = 0;
-  if (plan === "monthly") monthsToAdd = 1;
-  else if (plan === "quarterly") monthsToAdd = 3;
-  else if (plan === "half-yearly") monthsToAdd = 6;
-  else if (plan === "yearly") monthsToAdd = 12;
+  if (plan.duration === "monthly") monthsToAdd = 1;
+  else if (plan.duration === "quarterly") monthsToAdd = 3;
+  else if (plan.duration === "half-yearly") monthsToAdd = 6;
+  else if (plan.duration === "yearly") monthsToAdd = 12;
   else throw new ApiError(400, "Invalid plan");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
+
+  let final;
+  let discount;
+  if (coupon) {
+    if (c.typeOfCoupon === "flat") {
+      discount = c.value;
+      final = plan.finalPrice - discount;
+    } else if (c.typeOfCoupon === "percentage") {
+      if (c.maxDiscount < (plan.finalPrice * c.value) / 100) {
+        discount = c.maxDiscount;
+        final = plan.finalPrice - discount;
+      } else {
+        discount = (plan.finalPrice * c.value) / 100;
+        final = plan.finalPrice - discount;
+      }
+    }
+  } else {
+    final = plan.finalPrice;
+  }
+
 
   const pt = await Ptbill.create({
     user: userId,
     subscription: [
       {
-        plan,
-        price,
-        status: status || "active",
+        plan:plan.duration,
+        basePrice:plan.finalPrice,
+        finalPrice:final,
+        status: "active",
         startDate: start,
         endDate: endDate,
         trainer: trainerId,
+        discount: {
+      amount: discount || 0,
+      code: c?.code || "",
+      typeOfDiscount: c?.typeOfCoupon || "none",
+      value: c?.value || 0,
+    },
+        paymentMethod: paymentMethod || "cash",
+        ref: ref || ""
       },
     ],
   });
@@ -703,10 +660,9 @@ const assignPT = asyncHandler(async (req, res) => {
   await Transaction.create({
     user: userId,
     source: "personal-training",
-    // referenceId: pt.subscription[pt.subscription.length - 1]._id,
     referenceId:pt._id,
     subReferenceId: pt.subscription[pt.subscription.length - 1]._id,
-    amount: price,
+    amount: final,
     paymentMethod: paymentMethod || "cash",
     status: "success",
     referenceModel:"Ptbill"
@@ -732,10 +688,10 @@ const assignPT = asyncHandler(async (req, res) => {
       memberName: user.username,
       email: user.email,
       phoneNumber: user.phoneNumber,
-      plan: plan,
+      plan: plan.duration,
       startDate: start.toISOString(),
       endDate: endDate.toISOString(),
-      price: price,
+      price: final,
       trainerName: trainer?.fullName || "Your Personal Trainer",
       assignmentDate: new Date().toISOString(),
       trainerEmail:trainer.email,
@@ -759,36 +715,89 @@ const renewalPtSub = asyncHandler(async (req, res) => {
   if (!user) throw new ApiError(400, "user wasn't able to found out!");
 
   const trainerId = req.params.trainer_id;
+   const planId = req.params.plan_id;
+  const {paymentMethod,ref,startDate,coupon} = req.body;
+  const plan = await Plan.findById(planId)
 
-  const { plan, price, startDate, status, paymentMethod } = req.body;
+  const c = await Coupon.findOne({code:coupon});
+    if (coupon) {
+      if (!c) {
+        throw new ApiError(
+          400,
+          "coupon isn't able to find, contact administration!"
+        );
+      }
+      if (!c.isActive)
+        throw new ApiError(400, "coupon is not active! contact administrator");
+      if (c.category !== "PERSONAL TRAINING")
+        throw new ApiError(400, "coupon is not applicable on this category");
+      if (c.minCartAmount > plan.finalPrice)
+        throw new ApiError(
+          400,
+          "coupon is not applicable, minimum Cart amount must exceed!"
+        );
+    }
+
+  if (!(plan)){
+    throw new ApiError(400, "plan Type must required");
+  }
+  const d = startDate || new Date()
+  const start = parseDDMMYYYY(d);
   // stauts will be evaluated via backend
-  if (!(plan || price))
-    throw new ApiError(400, "planType and price must required");
+  if (!(plan))
+    throw new ApiError(400, "plan Type must required");
 
-  const start = parseDDMMYYYY(startDate);
 
   let monthsToAdd = 0;
-  if (plan === "monthly") monthsToAdd = 1;
-  else if (plan === "quarterly") monthsToAdd = 3;
-  else if (plan === "half-yearly") monthsToAdd = 6;
-  else if (plan === "yearly") monthsToAdd = 12;
+  if (plan.duration === "monthly") monthsToAdd = 1;
+  else if (plan.duration === "quarterly") monthsToAdd = 3;
+  else if (plan.duration === "half-yearly") monthsToAdd = 6;
+  else if (plan.duration === "yearly") monthsToAdd = 12;
   else throw new ApiError(400, "Invalid plan");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
+
+    let final;
+  let discount;
+  if (coupon) {
+    if (c.typeOfCoupon === "flat") {
+      discount = c.value;
+      final = plan.finalPrice - discount;
+    } else if (c.typeOfCoupon === "percentage") {
+      if (c.maxDiscount < (plan.finalPrice * c.value) / 100) {
+        discount = c.maxDiscount;
+        final = plan.finalPrice - discount;
+      } else {
+        discount = (plan.finalPrice * c.value) / 100;
+        final = plan.finalPrice - discount;
+      }
+    }
+  } else {
+    final = plan.finalPrice;
+  }
 
   const pt = await Ptbill.findByIdAndUpdate(
     user.personalTraning,
     {
       $push: {
         subscription: [
-          {
-            plan,
-            price,
-            status: status || "active",
-            startDate: start,
-            endDate: endDate,
-            trainer: trainerId,
-          },
+               {
+        plan:plan.duration,
+        basePrice:plan.finalPrice,
+        finalPrice:final,
+        status: "active",
+        startDate: start,
+        endDate: endDate,
+        trainer: trainerId,
+        discount: {
+      amount: discount || 0,
+      code: c?.code || "",
+      typeOfDiscount: c?.typeOfCoupon || "none",
+      value: c?.value || 0,
+    },
+        paymentMethod: paymentMethod || "cash",
+        ref: ref || ""
+      },
         ],
       },
     },
@@ -827,7 +836,7 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     source: "personal-training",
     referenceId:pt._id,
     subReferenceId: pt.subscription[pt.subscription.length - 1]._id,
-    amount: price,
+    amount: final,
     paymentMethod: paymentMethod || "cash",
     status: "success",
     referenceModel:"Ptbill"
@@ -842,10 +851,10 @@ const renewalPtSub = asyncHandler(async (req, res) => {
       memberName: user.username,
       email: user.email,
       phoneNumber: user.phoneNumber,
-      plan: plan,
+      plan: plan.duration,
       startDate: start.toISOString(),
       endDate: endDate.toISOString(),
-      price: price,
+      price: final,
       trainerName: trainer?.name || "Your Personal Trainer",
       renewalDate: new Date().toISOString(),
       renewalNumber: pt.subscription.length

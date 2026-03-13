@@ -6,6 +6,7 @@ import { generateresetPasswordToken , validateOTPandChangePassword } from "../se
 import {approveCheck, getMyDiet} from "../controllers/diet.controllers.js"
 import { User } from "../models/user.models.js";
 import { changePassword } from "../service/change.password.service.js";
+import { checkStatus, generateTempPtbill, getTrainer } from "../controllers/user.ptbill.temp.controllers.js";
 const router = Router();
 
 
@@ -25,5 +26,11 @@ router.route("/reset/password").post(validateOTPandChangePassword(User))
 // diet
 router.route("/diet/check/status/:id").get(verifyJWT,approveCheck)
 router.route("/diet/my").get(verifyJWT,getMyDiet)
+
+// pt
+router.route("/pt/request/:planId").post(verifyJWT,
+    upload.single("image"),generateTempPtbill)
+router.route("/pt/request/status").get(verifyJWT,checkStatus)
+router.route("/pt/assign/trainer/:trainerId").patch(verifyJWT,getTrainer)
 
 export default router;
