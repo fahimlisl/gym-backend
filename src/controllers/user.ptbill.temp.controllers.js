@@ -9,6 +9,7 @@ import { Admin } from "../models/admin.models.js";
 import { Ptbill } from "../models/ptbill.models.js";
 import { Transaction } from "../models/transaction.models.js";
 import { Trainer } from "../models/trainer.models.js";
+import { User } from "../models/user.models.js";
 
 const generateTempPtbill = asyncHandler(async (req, res) => {
   const planId = req.params.planId;
@@ -194,6 +195,16 @@ const approve = asyncHandler(async (req, res) => {
   })
 
   if(!trans) throw new ApiError(500,"internal server error!");
+  await User.findByIdAndUpdate(t.user,
+    {
+      $set:{
+        personalTraning:bill._id
+      }
+    },
+    {
+      new:true
+    }
+  )
 
 
   return res
