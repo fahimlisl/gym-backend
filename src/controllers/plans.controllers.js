@@ -138,8 +138,7 @@ const addBenefits = asyncHandler(async(req,res) => {
 const removeBenefits = asyncHandler(async(req,res) => {
     const planId = req.params.planId;
     const subBenefitId = req.params.subBenefitId;
-    console.log(planId)
-    console.log(subBenefitId)
+
     const plan = await Plan.findByIdAndUpdate(planId,
         {
             $pull:{
@@ -174,5 +173,21 @@ const fetchAllPlans = asyncHandler(async(req,res) => {
         "successfully fetched all plans"
         )
     )
+});
+
+const fetchParticularPlan = asyncHandler(async(req,res) => {
+    const planId = req.params.planId;
+    const plan = await Plan.findById(planId);
+    if(!plan) throw new ApiError(400,"plan wasn't able to found!")
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            plan,
+            "plan has been fetcehd successfully"
+        )
+    )
 })
-export { addPlan ,editPlan, destroyPlan , fetchAllPlans, addBenefits ,removeBenefits}
+export { addPlan ,editPlan, destroyPlan , fetchAllPlans, addBenefits ,removeBenefits,fetchParticularPlan}

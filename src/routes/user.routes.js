@@ -7,6 +7,8 @@ import {approveCheck, getMyDiet} from "../controllers/diet.controllers.js"
 import { User } from "../models/user.models.js";
 import { changePassword } from "../service/change.password.service.js";
 import { checkStatus, generateTempPtbill, getTrainer } from "../controllers/user.ptbill.temp.controllers.js";
+import { fetchAllPlans, fetchParticularPlan } from "../controllers/plans.controllers.js";
+import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
 const router = Router();
 
 
@@ -32,5 +34,9 @@ router.route("/pt/request/:planId").post(verifyJWT,
     upload.single("image"),generateTempPtbill)
 router.route("/pt/request/status").get(verifyJWT,checkStatus)
 router.route("/pt/assign/trainer/:trainerId").patch(verifyJWT,getTrainer)
+router.route("/plans/pt/fetch/all").get(verifyJWT,fetchAllPlans)
+router.route("/plans/pt/fetch/:planId").get(verifyJWT,fetchParticularPlan)
+
+router.route("/coupon").post(verifyJWT,fetchParticularCoupon)
 
 export default router;

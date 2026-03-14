@@ -271,6 +271,22 @@ const removeCoupon = asyncHandler(async (req, res) => {
   );
 });
 
+const fetchParticularCoupon = asyncHandler(async(req,res) => {
+  const {code} = req.body;
+  const c = await Coupon.findOne({code})
+  if(!c) throw new ApiError(400,"wasn't able to found coupon!")
+  
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      c,
+      "coupon successfully fetched"
+    )
+  )
+})
+
 export {
   addCoupon,
   fetchAllCoupons,
@@ -278,5 +294,6 @@ export {
   toggleCouponExpire,
   destroyCoupon,
   applyCoupon,
-  removeCoupon
+  removeCoupon,
+  fetchParticularCoupon
 };

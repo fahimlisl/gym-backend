@@ -114,8 +114,12 @@ const generateTempPtbill = asyncHandler(async (req, res) => {
 const checkStatus = asyncHandler(async (req, res) => {
   const userId = req?.user?._id;
   const temp = await TempPtBill.findOne({ user: userId });
-  if (!temp) throw new ApiError(400, "there are no ongoing request!");
-
+  // if (!temp) throw new ApiError(400, "there are no ongoing request!");
+  if (!temp) {
+  return res.status(200).json(
+    new ApiResponse(200, null, "no ongoing request")
+  );
+}
   // will be using fontend to show beautyflly wheaterh approved or not! and all details
   return res
     .status(200)
@@ -262,16 +266,16 @@ const getTrainer = asyncHandler(async(req,res) => {
   if(!temp.isApproved){
     throw new ApiError(400,"request has not been approved by admin!");
   }
-  const trainer = await Trainer.findByIdAndUpdate(trainerId,
+  const trainer = await Trainer.findByIdAndUpdate(
+    trainerId,
     {
-      $push:{
-        students:[
-          {
-            student:userId
-          }
-        ]
+      $addToSet: {
+        students: {
+          student: userId
+        }
       }
-    }
+    },
+    { new: true }
   );
   if(!trainer) throw new ApiError(400,"trainer not found! try again later!");
   const p = await Ptbill.findOne({user:userId})
