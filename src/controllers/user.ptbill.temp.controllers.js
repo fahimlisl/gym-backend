@@ -287,6 +287,27 @@ const getTrainer = asyncHandler(async(req,res) => {
   const t = await TempPtBill.findOneAndDelete({user:userId});
   await deleteFromCloudinary(t.image.public_id);
 
+    try {
+    const trainer = await Trainer.findById(trainerId);
+    const user = await User.findById(userId)
+    await axios.post(process.env.N8N_WEBHOOK_URL, {
+      eventType: "pt_assigned",
+      memberName: user.username,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      plan: p.subscription[p.subscription.length - 1].plan,
+      startDate: start.toISOString(),
+      endDate: endDate.toISOString(),
+      price: final,
+      trainerName: trainer?.fullName || "Your Personal Trainer",
+      assignmentDate: new Date().toISOString(),
+      trainerEmail:trainer.email,
+      trainerPhoneNumber:trainer.phoneNumber
+    });
+  } catch (error) {
+    console.error('Failed to trigger PT assignment email:', error.message);
+  }
+
   return res
   .status(200)
   .json(

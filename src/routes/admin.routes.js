@@ -54,14 +54,14 @@ import {
   getCafeCategories,
   toggleAvailabilty,
 } from "../controllers/cafeItem.controllers.js";
-import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, toggleCouponExpire } from "../controllers/coupon.controllers.js";
+import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, fetchParticularCoupon, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
 import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, markAttendance } from "../controllers/attendence.controllers.js";
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import { Admin } from "../models/admin.models.js";
 import { changePassword } from "../service/change.password.service.js";
-import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchParticularPlan, removeBenefits } from "../controllers/plans.controllers.js";
+import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchParticularPlan, fetchPtPlans, removeBenefits } from "../controllers/plans.controllers.js";
 import { approve, fetchAllRequests, fetchParticularRequest } from "../controllers/user.ptbill.temp.controllers.js";
 const router = Router();
 
@@ -127,6 +127,7 @@ router.route("/plan/add").post(verifyJWT,isAdmin,addPlan)
 router.route("/plan/edit/:planId").patch(verifyJWT,isAdmin,editPlan)
 router.route("/plan/destroy/:planId").delete(verifyJWT,isAdmin,destroyPlan)
 router.route("/plan/fetch/all").get(verifyJWT,isAdmin,fetchAllPlans)
+router.route("/plan/pt/fetch/all").get(verifyJWT,isAdmin,fetchPtPlans)
 router.route("/plan/add/benefit/:planId").patch(verifyJWT,isAdmin,addBenefits)
 router.route("/plan/remove/benefit/:planId/:subBenefitId").patch(verifyJWT,isAdmin,removeBenefits)
 router.route("/plan/fetch/:planId").get(verifyJWT,isAdmin,fetchParticularPlan)
@@ -187,6 +188,7 @@ router.route("/fetchAllCoupons").get(verifyJWT,isAdmin,fetchAllCoupons)
 router.route("/edit-coupon/:id").patch(verifyJWT,isAdmin,editCoupons)
 router.route("/toggleCouponExpire/:id").patch(verifyJWT,isAdmin,toggleCouponExpire)
 router.route("/destroyCoupon/:id").delete(verifyJWT,isAdmin,destroyCoupon)
+router.route("/coupon").post(verifyJWT,isAdmin,fetchParticularCoupon)
 
 // expense
 router.route("/add-expense").post(verifyJWT,isAdmin,addExpense)
