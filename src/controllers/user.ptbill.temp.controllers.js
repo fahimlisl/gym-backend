@@ -136,6 +136,7 @@ const approve = asyncHandler(async (req, res) => {
   if (!t) throw new ApiError(400, "bill doesn't exist!");
   t.isApproved = true;
   await t.save();
+  const ptcheck = await Ptbill.findOne({user:t.user});
   // await TempPtBill.find
   // thinking about deletation of temp pt bill after approval
 
@@ -162,28 +163,59 @@ const approve = asyncHandler(async (req, res) => {
   else throw new ApiError(400, "Invalid plan");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
-
-  const bill = await Ptbill.create({
-    user: t.user,
-    subscription: [
+  let bill;
+  if (ptcheck) {
+    bill = await Ptbill.findByIdAndUpdate(
+      ptcheck._id,
       {
-        plan: t.plan,
-        basePrice: t.basePrice,
-        finalPrice: t.finalPrice,
-        discount: {
-          amount: t.discount.amount,
-          typeOfDiscount: t.discount.typeOfDiscount,
-          value: t.discount.value,
-          code: t.discount.value,
+        $push: {
+          subscription: [
+            {
+              plan: t.plan,
+              basePrice: t.basePrice,
+              finalPrice: t.finalPrice,
+              discount: {
+                amount: t.discount.amount,
+                typeOfDiscount: t.discount.typeOfDiscount,
+                value: t.discount.value,
+                code: t.discount.code,
+              },
+              paymentMethod: t.paymentMethod,
+              ref: t.ref,
+              status: "active",
+              startDate: start,
+              endDate,
+            },
+          ],
         },
-        paymentMethod: t.paymentMethod,
-        ref: t.ref,
-        status: "active",
-        startDate:start,
-        endDate,
       },
-    ],
-  });
+      {
+        new: true,
+      }
+    );
+  } else {
+    bill = await Ptbill.create({
+      user: t.user,
+      subscription: [
+        {
+          plan: t.plan,
+          basePrice: t.basePrice,
+          finalPrice: t.finalPrice,
+          discount: {
+            amount: t.discount.amount,
+            typeOfDiscount: t.discount.typeOfDiscount,
+            value: t.discount.value,
+            code: t.discount.code,
+          },
+          paymentMethod: t.paymentMethod,
+          ref: t.ref,
+          status: "active",
+          startDate: start,
+          endDate,
+        },
+      ],
+    });
+  }
 
   // need to add a n8n automation , saying approval is done , now select your trainer
 
