@@ -191,6 +191,20 @@ const fetchParticularPlan = asyncHandler(async(req,res) => {
     )
 });
 
+const fetchSubPlans = asyncHandler(async(req,res) => {
+    const plans = await Plan.find({category:"SUBSCRIPTION"});
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            plans,
+            "SUBSCRIPTION plans are fetched successfully!"
+        )
+    )
+})
+
 const fetchPtPlans = asyncHandler(async(req,res) => {
     const plans = await Plan.find({category:"PT"});
 
@@ -204,4 +218,4 @@ const fetchPtPlans = asyncHandler(async(req,res) => {
         )
     )
 })
-export { addPlan ,editPlan, destroyPlan , fetchAllPlans, addBenefits ,removeBenefits,fetchParticularPlan,fetchPtPlans}
+export { addPlan ,editPlan, destroyPlan , fetchAllPlans, addBenefits ,removeBenefits,fetchParticularPlan,fetchPtPlans,fetchSubPlans}

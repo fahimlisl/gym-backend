@@ -61,7 +61,7 @@ import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, m
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import { Admin } from "../models/admin.models.js";
 import { changePassword } from "../service/change.password.service.js";
-import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchParticularPlan, fetchPtPlans, removeBenefits } from "../controllers/plans.controllers.js";
+import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchParticularPlan, fetchPtPlans, fetchSubPlans, removeBenefits } from "../controllers/plans.controllers.js";
 import { approve, fetchAllRequests, fetchParticularRequest } from "../controllers/user.ptbill.temp.controllers.js";
 const router = Router();
 
@@ -78,7 +78,7 @@ router
   .post(upload.single("avatar"), verifyJWT, isAdmin, registerUser);
 router.route("/destroy-user/:id").delete(verifyJWT, isAdmin, destroyUser);
 router
-  .route("/renewalSubscription/:id")
+  .route("/renewalSubscription/:id/:planId")
   .patch(verifyJWT, isAdmin, renewalSubscription);
 router
   .route("/edit-user/:id")
@@ -131,6 +131,10 @@ router.route("/plan/pt/fetch/all").get(verifyJWT,isAdmin,fetchPtPlans)
 router.route("/plan/add/benefit/:planId").patch(verifyJWT,isAdmin,addBenefits)
 router.route("/plan/remove/benefit/:planId/:subBenefitId").patch(verifyJWT,isAdmin,removeBenefits)
 router.route("/plan/fetch/:planId").get(verifyJWT,isAdmin,fetchParticularPlan)
+router.route("/plans/sub/fetch/all").get(verifyJWT,isAdmin,fetchSubPlans)
+router.route("/plans/sub/fetch/:planId").get(verifyJWT,isAdmin,fetchParticularPlan)
+
+
 
 // approval
 router.route("/pt/request/approval/:tempBillId").post(verifyJWT,isAdmin,approve)

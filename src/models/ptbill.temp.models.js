@@ -50,17 +50,17 @@ const tempPtBillSchema = new mongoose.Schema(
       required: true,
     },
 
-    image: {
-      // will be screenshot or proof
-      url: {
-        type: String,
-        required: true,
-      },
-      public_id: {
-        type: String,
-        required: true,
-      },
-    },
+    // image: {
+    //   // will be screenshot or proof
+    //   url: {
+    //     type: String,
+    //     required: true,
+    //   },
+    //   public_id: {
+    //     type: String,
+    //     required: true,
+    //   },
+    // },
 
     isApproved: {
       type: Boolean,
@@ -69,7 +69,7 @@ const tempPtBillSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cash", "upi", "card", "netbanking"],
+      enum: ["cash", "upi", "card", "netbanking","razorpay"],
       required: true,
     },
     // upiRef: {

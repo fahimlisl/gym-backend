@@ -2,6 +2,7 @@ import { Router } from "express";
 import { fetchAllSupp, fetchParticularSupp } from "../controllers/supplement.controllers.js";
 import { fetchAllTrainer, fetchParticularTrainer } from "../controllers/trainer.controllers.js";
 import { fetchAllPlans } from "../controllers/plans.controllers.js";
+import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
 
 const router = Router();
 
@@ -17,5 +18,8 @@ router.route("/fetchParticularTrainer/:id").get(fetchParticularTrainer)
 
 //pricing
 router.route("/plan/fetch/all").get(fetchAllPlans)
+
+//
+router.route("/coupon").post(fetchParticularCoupon)
 
 export default router;

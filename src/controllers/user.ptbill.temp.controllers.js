@@ -51,16 +51,16 @@ const generateTempPtbill = asyncHandler(async (req, res) => {
       );
   }
 
-  const proofBuffer = req.file?.buffer;
-  if (!proofBuffer) throw new ApiError(400, "image proof wasn't able to found");
+  // const proofBuffer = req.file?.buffer;
+  // if (!proofBuffer) throw new ApiError(400, "image proof wasn't able to found");
 
-  const imgupload = await uploadOnCloudinary(proofBuffer);
+  // const imgupload = await uploadOnCloudinary(proofBuffer);
 
-  if (!imgupload)
-    throw new ApiError(
-      400,
-      "wasn't able to upload proof to cloudinary kindly try again later , or conatcat administration"
-    );
+  // if (!imgupload)
+  //   throw new ApiError(
+  //     400,
+  //     "wasn't able to upload proof to cloudinary kindly try again later , or conatcat administration"
+  //   );
 
   let final;
   let discount;
@@ -86,10 +86,10 @@ const generateTempPtbill = asyncHandler(async (req, res) => {
     plan: plan.duration,
     basePrice: plan.finalPrice,
     finalPrice: final, // need to calcaution before proccedigin
-    image: {
-      url: imgupload.url,
-      public_id: imgupload.public_id,
-    },
+    // image: {
+    //   url: imgupload.url,
+    //   public_id: imgupload.public_id,
+    // },
     discount: {
       amount: discount || 0,
       code: c?.code || "",
@@ -128,10 +128,10 @@ const checkStatus = asyncHandler(async (req, res) => {
 
 // admin route (secured)
 const approve = asyncHandler(async (req, res) => {
-  const adminId = req.user._id;
+  // const adminId = req.user._id;
   const tempBillId = req.params.tempBillId;
-  const admin = await Admin.findById(adminId); // for extra security layer
-  if (!admin) throw new ApiError(400, "approval must be done by admin!");
+  // const admin = await Admin.findById(adminId); // for extra security layer
+  // if (!admin) throw new ApiError(400, "approval must be done by admin!");
   const t = await TempPtBill.findById(tempBillId);
   if (!t) throw new ApiError(400, "bill doesn't exist!");
   t.isApproved = true;

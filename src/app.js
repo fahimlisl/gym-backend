@@ -26,6 +26,7 @@ import userRouter from "./routes/user.routes.js"
 import generalRouter from "./routes/general.routes.js"
 import trainerRouter from "./routes/trainer.routes.js"
 import cafeAdminRouter from "./routes/cafeAdmin.routes.js"
+import paymentRoutes from "./routes/payment.routes.js"
 // routes
 
 app.use("/api/v1/admin",adminRouter)
@@ -33,6 +34,7 @@ app.use("/api/v1/user",userRouter)
 app.use("/api/v1/general",generalRouter)
 app.use("/api/v1/trainer",trainerRouter)
 app.use("/api/v1/cafe/admin",cafeAdminRouter)
+app.use("/api/v1/payment",paymentRoutes)
 
 
 export default app

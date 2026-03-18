@@ -7,7 +7,7 @@ const subsSchema = new mongoose.Schema(
       enum: ["monthly", "quarterly", "half-yearly", "yearly"],
       required: true,
     },
-    price: {
+    baseAmount: { // earlier was price
       type: Number,
     },
     startDate: {
@@ -32,20 +32,35 @@ const subsSchema = new mongoose.Schema(
       enum: ["paid", "pending"],
       default: "paid",
     },
-    discountType:{
-      type:String,
-      enum:["percentage","flat","none"],
-      required:true // will be controllring via forntend  , like if discount is enabling then only give the require thing , 
-      // also need to control the percentage , form 0-100 , via forntend , 
-    },
-    discount:{ // there will the two types of discount , 1) percentage wise 2) manual
-      type:Number,
-      default:0
+    discount: {
+      amount: {
+        type: Number,
+      },
+      typeOfDiscount: {
+        type: String,
+      },
+      value: {
+        type: Number,
+      },
+      code: {
+        type: String,
+      },
     },
     finalAmount:{
       type:Number,
       required:true
-    }
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cash", "upi", "card", "netbanking","razorpay"],
+      required: true,
+    },
+    ref: {
+      type: String,
+      required: function () {
+        return this.paymentMethod === "upi";
+      },
+    },
   },
   {timestamps:true}
 );

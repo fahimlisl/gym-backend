@@ -16,184 +16,259 @@ import axios from "axios"
 import { Coupon } from "../models/coupon.models.js";
 import { Plan } from "../models/plans.models.js";
 
-const registerUser = asyncHandler(async (req, res) => {
-  const { username, email, phoneNumber } = req.body;
 
+const registerUser = asyncHandler(async (req, res) => {
   const {
-    plan,
+    username,
+    email,
+    phoneNumber,
+    planId,
     paymentStatus,
-    price,
     admissionFee,
     paymentMethod,
-
-    discountType,
-    discount,
-
     discountTypeOnAdFee,
     discountOnAdFee,
+    paymentId,
+    orderId,
+    coupon, // ✅ NEW
   } = req.body;
 
-  const generateDefaultPassword = (username) => {
-  if (!username) return null;
-  const cleanName = username.trim().replace(/\s+/g, "");
-
-  const firstThree = cleanName.slice(0, 3).toLowerCase();
-
-  const randomThree = Math.floor(100 + Math.random() * 900);
-
-  return firstThree + randomThree;
-};
-
-const defaultPassword = generateDefaultPassword(username)
-
-  if (!(plan && price)) {
-    throw new ApiError(400, "plan and price must be provided");
+  if (!planId) {
+    throw new ApiError(400, "planId is required");
   }
 
-  if ([username, phoneNumber].some(v => !v && v !== 0)) {
+  if ([username, phoneNumber].some((v) => !v && v !== 0)) {
     throw new ApiError(400, "username, phoneNumber are required");
   }
 
-  if (!(discountType && discountTypeOnAdFee)) {
-    throw new ApiError(
-      400,
-      "discountType and discountTypeOnAdFee are required"
-    );
-  }
-
   const exists = await User.findOne({
-    $or: [{ email }, { phoneNumber }],
+    $or: [{ email: email || null }, { phoneNumber }],
   });
+
   if (exists) {
     throw new ApiError(400, "user already exists");
   }
 
-  const avatarBuffer = req.file?.buffer;
-  if (!avatarBuffer) throw new ApiError(400, "avatar is required");
+  const plan = await Plan.findById(planId);
+  if (!plan) throw new ApiError(404, "Plan not found");
 
-  const avatarOnCloud = await uploadOnCloudinary(avatarBuffer);
-  if (!avatarOnCloud) {
-    throw new ApiError(400, "failed to upload avatar");
+  let c = null;
+  let subscriptionDiscountAmount = 0;
+
+  if (coupon) {
+    c = await Coupon.findOne({ code: coupon });
+
+    if (!c) throw new ApiError(400, "Coupon not found");
+    if (!c.isActive) throw new ApiError(400, "Coupon inactive");
+    if (c.category !== "SUBSCRIPTION") {
+      throw new ApiError(400, "Invalid coupon category");
+    }
+    if (c.minCartAmount > plan.finalPrice) {
+      throw new ApiError(400, "Minimum cart not met");
+    }
+
+    if (c.typeOfCoupon === "flat") {
+      subscriptionDiscountAmount = c.value;
+    } else if (c.typeOfCoupon === "percentage") {
+      const percentage = (plan.finalPrice * c.value) / 100;
+      subscriptionDiscountAmount = Math.min(
+        percentage,
+        c.maxDiscount || percentage
+      );
+    }
+  }
+
+  let finalSubscriptionAmount =
+    plan.finalPrice - subscriptionDiscountAmount;
+
+  if (finalSubscriptionAmount < 0) finalSubscriptionAmount = 0;
+
+  let admissionDiscountAmount = 0;
+
+  if (discountTypeOnAdFee === "percentage") {
+    admissionDiscountAmount =
+      (Number(admissionFee || 0) * Number(discountOnAdFee || 0)) / 100;
+  } else if (discountTypeOnAdFee === "flat") {
+    admissionDiscountAmount = Number(discountOnAdFee || 0);
+  }
+
+  const finalAdFee =
+    Number(admissionFee || 0) - admissionDiscountAmount;
+
+  const defaultPassword = username.slice(0, 3).toLowerCase() +
+    Math.floor(100 + Math.random() * 900);
+
+  let avatarOnCloud = null;
+  if (req.file?.buffer) {
+    avatarOnCloud = await uploadOnCloudinary(req.file.buffer);
+    if (!avatarOnCloud) {
+      throw new ApiError(400, "failed to upload avatar");
+    }
+  }
+  else {
+    try {
+      const initials = username
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+
+      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        username
+      )}&background=ef4444&color=fff&bold=true`;
+
+      avatarOnCloud = {
+        url: avatarUrl,
+        public_id: `avatar_${phoneNumber}_${Date.now()}`,
+      };
+    } catch (error) {
+      console.error("Failed to generate default avatar:", error);
+      avatarOnCloud = {
+        url: "https://ui-avatars.com/api/?name=User&background=ef4444&color=fff",
+        public_id: `avatar_default_${Date.now()}`,
+      };
+    }
   }
 
   const user = await User.create({
     username,
     email: email || "",
     phoneNumber,
-    password:defaultPassword,
-    avatar: {
-      url: avatarOnCloud.url,
-      public_id: avatarOnCloud.public_id,
-    },
-    isActive:true
+    password: defaultPassword,
+    isActive: true,
+    avatar:{
+      url:avatarOnCloud.url,
+      public_id:avatarOnCloud.public_id
+    }
   });
 
-  if (!user) {
-    throw new ApiError(500, "failed to create user");
-  }
-
   const startDate = new Date();
+  let monthsToAdd = 0;
+
+  if (plan.duration === "monthly") monthsToAdd = 1;
+  else if (plan.duration === "quarterly") monthsToAdd = 3;
+  else if (plan.duration === "half-yearly") monthsToAdd = 6;
+  else if (plan.duration === "yearly") monthsToAdd = 12;
+
   const endDate = new Date(startDate);
-
-  if (plan === "monthly") endDate.setMonth(endDate.getMonth() + 1);
-  if (plan === "quarterly") endDate.setMonth(endDate.getMonth() + 3);
-  if (plan === "half-yearly") endDate.setMonth(endDate.getMonth() + 6);
-  if (plan === "yearly") endDate.setMonth(endDate.getMonth() + 12);
-
-  let subscriptionDiscountAmount = 0;
-  if (discountType === "percentage") {
-    subscriptionDiscountAmount = (Number(price) * Number(discount || 0)) / 100;
-  } else if (discountType === "flat") {
-    subscriptionDiscountAmount = Number(discount || 0);
-  }
-  let admissionDiscountAmount = 0;
-
-  if (discountTypeOnAdFee === "percentage") {
-    admissionDiscountAmount =
-      (Number(admissionFee) * Number(discountOnAdFee || 0)) / 100;
-  } else if (discountTypeOnAdFee === "flat") {
-    admissionDiscountAmount = Number(discountOnAdFee || 0);
-  }
+  endDate.setMonth(endDate.getMonth() + monthsToAdd);
 
   const subPayload = {
-    plan,
-    price: Number(price),
+    plan: plan.duration,
+    baseAmount: plan.basePrice,
     startDate,
     endDate,
     status: "active",
     paymentStatus: paymentStatus || "paid",
-    discountType,
-    discount: Number(discount || 0),
-    finalAmount: Number(price) - subscriptionDiscountAmount,
+
+    discount: {
+      amount: subscriptionDiscountAmount,
+      typeOfDiscount: c?.typeOfCoupon || "",
+      value: c?.value || 0,
+      code: c?.code || "",
+    },
+
+    finalAmount: finalSubscriptionAmount,
+    paymentMethod: paymentMethod || "razorpay",
   };
 
   const subscription = await Subscription.create({
     user: user._id,
-    admissionFee: Number(admissionFee),
-
+    admissionFee: Number(admissionFee || 0),
     discountTypeOnAdFee,
     discountOnAdFee: Number(discountOnAdFee || 0),
-    finalAdFee: Number(admissionFee) - admissionDiscountAmount,
-
+    finalAdFee,
     subscription: [subPayload],
   });
-
-  if (!subscription) {
-    await User.findByIdAndDelete(user._id);
-    throw new ApiError(500, "failed to create subscription");
-  }
 
   await User.findByIdAndUpdate(user._id, {
     $set: { subscription: subscription._id },
   });
 
+  const totalAmount =
+    finalSubscriptionAmount + finalAdFee;
+
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
     referenceId: subscription._id,
-    subReferenceId:subscription.subscription[
-        subscription.subscription.length - 1
-      ]._id,
-    amount:
-      Number(price) +
-      Number(admissionFee) -
-      subscriptionDiscountAmount -
-      admissionDiscountAmount,
-
-    paymentMethod: paymentMethod || "cash",
-    referenceModel:"Subscription"
+    subReferenceId: subscription.subscription[0]._id,
+    amount: totalAmount,
+    paymentMethod: paymentMethod || "razorpay",
+    referenceModel: "Subscription",
+    paymentId,
+    orderId,
+    status: "success",
   });
 
-  if (!transaction) {
-    throw new ApiError(500, "failed to create transaction");
-  }
-
   try {
-    await axios.post(process.env.N8N_WEBHOOK_URL, {
-      eventType: "new_member",
-      memberName: username,
-      email: email || '',
-      phoneNumber: phoneNumber,
-      plan: plan,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      price: Number(price),
-      admissionFee: Number(admissionFee),
-      finalAmount: Number(price) + Number(admissionFee) - subscriptionDiscountAmount - admissionDiscountAmount,
-      registrationDate: new Date().toISOString(),
-      password:defaultPassword
-    });
-  } catch (error) {
-    console.error('Failed to trigger n8n webhook:', error);
-  }
+  await axios.post(process.env.N8N_WEBHOOK_URL, {
+    eventType: "new_member",
+    memberName: username,
+    email: email || "",
+    phoneNumber: phoneNumber,
+    plan: plan.duration,
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+    price: plan.finalPrice,
+    discountApplied: subscriptionDiscountAmount,
+    finalAmount: totalAmount,
+    couponUsed: coupon || null,
+    registrationDate: new Date().toISOString(),
+    password: defaultPassword,
+  });
+} catch (error) {
+  console.error("Failed to trigger n8n webhook:", error);
+  // Don't throw - webhook failure shouldn't break registration
+}
+
+
 
   return res.status(200).json(
     new ApiResponse(
       200,
-      user,
-      "member created successfully"
+      {
+        user,
+        subscription,
+        transaction,
+        finalAmount: totalAmount,
+      },
+      "User registered successfully with coupon support"
     )
   );
+});
+
+
+const checkUser = asyncHandler(async(req,res) => {
+  const {phoneNumber,email} = req.body;
+  const user = await User.findOne({
+    $or:[
+      {email},{phoneNumber}
+    ]
+  })
+  if(!user){ // !user === !null -> true
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        false, // use doens't exist can procede to next steps 
+        "user doesn't exist"
+      )
+    )
+  }
+  else{
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        true, // use already exists cannot procede to next steps 
+        "user already exist"
+      )
+    )
+  }
 });
 
 
@@ -340,66 +415,111 @@ const addMonthsSafe = (date, months) => {
 };
 
 const renewalSubscription = asyncHandler(async (req, res) => {
-  const userId = req.params.id;
+  let userId;
+  if(!(await User.findById(req.user._id))){
+    userId = req.params.id
+  }else{
+    userId = req.user._id
+  }
+  const planId = req.params.planId;
 
   const user = await User.findById(userId);
   if (!user) throw new ApiError(404, "Member not found");
 
-  const { plan, paymentStatus, price, startDate, paymentMethod, discountType, discount } = req.body;
+  const plan = await Plan.findById(planId);
+  if (!plan) throw new ApiError(404, "Plan not found");
 
-  if (!plan || !price) {
-    throw new ApiError(400, "Plan and price are required");
+  const { paymentStatus, startDate, paymentMethod } = req.body;
+  const { coupon } = req.body;
+
+  let c = null;
+  if (coupon) {
+    c = await Coupon.findOne({ code: coupon });
+    if (!c) {
+      throw new ApiError(400, "Coupon not found, contact administration!");
+    }
+    if (!c.isActive) {
+      throw new ApiError(400, "Coupon is not active! Contact administrator");
+    }
+    if (c.category !== "SUBSCRIPTION") {
+      throw new ApiError(400, "Coupon is not applicable on this category");
+    }
+    if (c.minCartAmount > plan.finalPrice) {
+      throw new ApiError(400, "Coupon is not applicable, minimum cart amount not met!");
+    }
   }
 
-  // Use today's date if startDate is not provided
   let start;
   if (!startDate) {
-    start = new Date(); // Default to today
+    start = new Date();
   } else {
     start = parseDDMMYYYY(startDate);
-    
-    // Check if parseDDMMYYYY returned a valid date
     if (!start || isNaN(start.getTime())) {
       throw new ApiError(400, "Invalid start date format");
     }
   }
-
   let monthsToAdd = 0;
-  if (plan === "monthly") monthsToAdd = 1;
-  else if (plan === "quarterly") monthsToAdd = 3;
-  else if (plan === "half-yearly") monthsToAdd = 6;
-  else if (plan === "yearly") monthsToAdd = 12;
-  else throw new ApiError(400, "Invalid plan");
+  if (plan.duration === "monthly") monthsToAdd = 1;
+  else if (plan.duration === "quarterly") monthsToAdd = 3;
+  else if (plan.duration === "half-yearly") monthsToAdd = 6;
+  else if (plan.duration === "yearly") monthsToAdd = 12;
+  else throw new ApiError(400, "Invalid plan duration");
 
   const endDate = addMonthsSafe(start, monthsToAdd);
-  
-  // Validate endDate
   if (!endDate || isNaN(endDate.getTime())) {
     throw new ApiError(400, "Failed to calculate end date");
   }
 
+  let final;
   let subscriptionDiscountAmount = 0;
 
-  if (discountType === "percentage") {
-    subscriptionDiscountAmount = (Number(price) * Number(discount || 0)) / 100;
-  } else if (discountType === "flat") {
-    subscriptionDiscountAmount = Number(discount || 0);
+  if (coupon && c) {
+    if (c.typeOfCoupon === "flat") {
+      subscriptionDiscountAmount = c.value;
+      final = plan.finalPrice - subscriptionDiscountAmount;
+    } else if (c.typeOfCoupon === "percentage") {
+      const percentageDiscount = (plan.finalPrice * c.value) / 100;
+      subscriptionDiscountAmount = Math.min(percentageDiscount, c.maxDiscount || percentageDiscount);
+      final = plan.finalPrice - subscriptionDiscountAmount;
+    }
+  } else {
+    final = plan.finalPrice;
+  }
+
+  if (final < 0) final = 0;
+
+  let subscription = await Subscription.findOne({ user: userId });
+  
+  if (!subscription) {
+    subscription = await Subscription.create({
+      user: userId,
+      subscription: [],
+      admissionFee: 0,
+      discountTypeOnAdFee: "none",
+      discountOnAdFee: 0,
+      finalAdFee: 0,
+    });
   }
 
   const renewal = await Subscription.findByIdAndUpdate(
-    user.subscription,
+    subscription._id,
     {
       $push: {
         subscription: {
-          plan,
-          price,
+          plan: plan.duration,
+          baseAmount: plan.finalPrice,
           startDate: start,
-          endDate,
+          endDate: endDate,
           status: "active",
-          discountType,
-          discount: Number(discount || 0),
-          finalAmount: Number(price) - subscriptionDiscountAmount,
+          discount: {
+            amount: subscriptionDiscountAmount || 0,
+            typeOfDiscount: c?.typeOfCoupon || "",
+            value: c?.value || 0,
+            code: c?.code || "",
+          },
+          finalAmount: final,
           paymentStatus: paymentStatus || "paid",
+          paymentMethod: paymentMethod || "razorpay",
         },
       },
     },
@@ -410,35 +530,28 @@ const renewalSubscription = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Failed to renew subscription");
   }
 
-  // marking isActive to true for user model 
-  await User.findByIdAndUpdate(userId,
-    {
-      $set:{
-        isActive:true
-      }
-    },
-    {
-      new:true
-    }
-  )
-  
+  await User.findByIdAndUpdate(
+    userId,
+    { $set: { isActive: true } },
+    { new: true }
+  );
+
   const latestSub = renewal.subscription[renewal.subscription.length - 1];
 
   const transaction = await Transaction.create({
     user: user._id,
     source: "subscription",
     referenceId: renewal._id,
-    subReferenceId: latestSub,
-    amount: Number(price) - subscriptionDiscountAmount,
-    paymentMethod: paymentMethod || "cash",
-    referenceModel: "Subscription"
+    subReferenceId: latestSub._id,
+    amount: final,
+    paymentMethod: paymentMethod || "razorpay",
+    referenceModel: "Subscription",
   });
 
   if (!transaction) {
     await Subscription.findByIdAndUpdate(renewal._id, {
       $pop: { subscription: 1 },
     });
-
     throw new ApiError(400, "Failed to generate transaction");
   }
 
@@ -448,20 +561,27 @@ const renewalSubscription = asyncHandler(async (req, res) => {
       memberName: user.username,
       email: user.email,
       phoneNumber: user.phoneNumber,
-      plan: plan,
+      plan: plan.duration,
+      planTitle: plan.title,
       startDate: start.toISOString(),
       endDate: endDate.toISOString(),
-      finalAmount: Number(price) - subscriptionDiscountAmount,
+      finalAmount: final,
       renewalDate: new Date().toISOString(),
-      renewalNumber: renewal.subscription.length
+      renewalNumber: renewal.subscription.length,
     });
   } catch (error) {
-    console.error('Failed to trigger renewal email:', error.message);
+    console.error("Failed to trigger renewal email:", error.message);
   }
 
   return res
     .status(200)
-    .json(new ApiResponse(200, renewal, "Renewal completed successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { renewal, transaction, finalAmount: final },
+        "Renewal completed successfully"
+      )
+    );
 });
 
 
@@ -901,4 +1021,5 @@ export {
   assignPT,
   renewalPtSub,
   fetchProfile,
+  checkUser
 };
