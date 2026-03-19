@@ -156,7 +156,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const subPayload = {
     plan: plan.duration,
-    baseAmount: plan.basePrice,
+    baseAmount: plan.finalPrice,
     startDate,
     endDate,
     status: "active",
