@@ -63,6 +63,9 @@ const registerUser = asyncHandler(async (req, res) => {
     if (c.category !== "SUBSCRIPTION") {
       throw new ApiError(400, "Invalid coupon category");
     }
+    if (c.usageLimit && c.usedCount >= c.usageLimit) {
+      throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
+    }
     if (c.minCartAmount > plan.finalPrice) {
       throw new ApiError(400, "Minimum cart not met");
     }
@@ -201,6 +204,21 @@ const registerUser = asyncHandler(async (req, res) => {
     orderId,
     status: "success",
   });
+
+  // check if request is from register route
+  if (req.originalUrl.includes("/user/register") && coupon && c) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from register route`);
+  }
+  // currently truning it off ! 
+  // else if(c.usageLimit && coupon && c) {
+  //   await Coupon.findByIdAndUpdate(c._id, {
+  //     $inc: { usedCount: 1 },
+  //   });
+  //   console.log(`Coupon usage incremented from normal admin route`);
+  // }
 
   try {
   await axios.post(process.env.N8N_WEBHOOK_URL, {
@@ -684,6 +702,9 @@ const assignPT = asyncHandler(async (req, res) => {
         throw new ApiError(400, "coupon is not active! contact administrator");
       if (c.category !== "PERSONAL TRAINING")
         throw new ApiError(400, "coupon is not applicable on this category");
+      if (c.usageLimit && c.usedCount >= c.usageLimit) {
+        throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
+      }
       if (c.minCartAmount > plan.finalPrice)
         throw new ApiError(
           400,
@@ -799,6 +820,13 @@ const assignPT = asyncHandler(async (req, res) => {
       new: true,
     }
   );
+
+  if (req.originalUrl.includes("/user/pt/request") && coupon && c) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from pt request route`);
+  }
 
   try {
     const trainer = await Trainer.findById(trainerId);

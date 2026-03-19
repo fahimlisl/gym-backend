@@ -13,7 +13,8 @@ const addCoupon = asyncHandler(async (req, res) => {
     expiryDate,
     isActive,
     value,
-    category
+    category,
+    usageLimit
   } = req.body;
   if (
     [code, typeOfCoupon, expiryDate, value,category].some((t) => !t && t !== 0)
@@ -38,7 +39,8 @@ const addCoupon = asyncHandler(async (req, res) => {
     expiryDate,
     isActive,
     value,
-    category
+    category,
+    usageLimit
   });
 
   if (!newcoup)
@@ -68,7 +70,8 @@ const editCoupons = asyncHandler(async (req, res) => {
     expiryDate,
     isActive,
     value,
-    category
+    category,
+    usageLimit
   } = req.body;
   const coupon = await Coupon.findById(couponId);
   if (!coupon) throw new ApiError(400, "wasn't able to found the coupon");
@@ -83,7 +86,8 @@ const editCoupons = asyncHandler(async (req, res) => {
         expiryDate: expiryDate || coupon.expiryDate,
         isActive: isActive || coupon.isActive,
         value: value || coupon.value,
-        category: category || coupon.category
+        category: category || coupon.category,
+        usageLimit: usageLimit || coupon.usageLimit
       },
     },
     {
@@ -161,6 +165,10 @@ const applyCoupon = asyncHandler(async (req, res) => {
 
   if(coupon.category !== "CAFE"){
     throw new ApiError(400,"wasn't able to apply, cateogry of coupon isn't CAFE!")
+  }
+
+  if (c.usageLimit && c.usedCount >= c.usageLimit) {
+    throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
   }
 
   // if (coupon.expiryDate && coupon.expiryDate < new Date()) { // for later

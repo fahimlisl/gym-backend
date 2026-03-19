@@ -37,6 +37,13 @@ const couponSchema = new mongoose.Schema(
       enum: ["CAFE", "ADMISSION", "SUBSCRIPTION", "PERSONAL TRAINING"], // WILL CONTROLE THIS VIA FRONTEND,
       required: true,
     },
+    usedCount: {
+      type: Number,
+      default: 0,
+    },
+    usageLimit: {
+      type: Number, // optional
+    },
     // - usageLimit (global or per user) // will implement later as per requirments
   },
   { timestamps: true }

@@ -63,6 +63,7 @@ import { Admin } from "../models/admin.models.js";
 import { changePassword } from "../service/change.password.service.js";
 import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchParticularPlan, fetchPtPlans, fetchSubPlans, removeBenefits } from "../controllers/plans.controllers.js";
 import { approve, fetchAllRequests, fetchParticularRequest } from "../controllers/user.ptbill.temp.controllers.js";
+import { addOffer, deleteOffer, editOffer, fetchOffer, toggleOfferActive } from "../controllers/offer.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -219,6 +220,14 @@ router.route("/month/attendence/:memberId").get(verifyJWT,isAdmin,getMemberMonth
 
 // /api/v1/admin/month/attendence?month=2026-04
 router.route("/month/attendence").get(verifyJWT,isAdmin,getMonthlyAttendance)
+
+
+// offer
+router.route("/offer/add").post(verifyJWT,isAdmin,addOffer)
+router.route("/offer/edit/:offerId").post(verifyJWT,isAdmin,editOffer)
+router.route("/offer/delete/:offerId").delete(verifyJWT,isAdmin,deleteOffer)
+router.route("/offer/toggle/:offerId").patch(verifyJWT,isAdmin,toggleOfferActive)
+router.route("/offer/fetch/all").get(verifyJWT,isAdmin,fetchOffer)
 
 
 export default router;
