@@ -10,6 +10,7 @@ import { approve, checkStatus, generateTempPtbill, getTrainer } from "../control
 import { fetchAllPlans, fetchParticularPlan, fetchPtPlans, fetchSubPlans } from "../controllers/plans.controllers.js";
 import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
 import { isUser } from "../middlewares/isUser.middlewares.js"
+import { getUserAssignedWorkout } from "../controllers/assignedWorkout.controllers.js";
 const router = Router();
 
 
@@ -50,5 +51,8 @@ router.route("/coupon").post(fetchParticularCoupon)
 
 // need to put under secure auth route 
 router.route("/pt/request/approval/:tempBillId").post(verifyJWT,approve)
+
+// workout
+router.get('/workout', verifyJWT, isUser, getUserAssignedWorkout)
 
 export default router;

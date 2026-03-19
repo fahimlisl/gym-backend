@@ -54,6 +54,17 @@ import {
   getCafeCategories,
   toggleAvailabilty,
 } from "../controllers/cafeItem.controllers.js";
+import {
+  createWorkoutTemplate,
+  addDayToTemplate,
+  addExerciseToDay,
+  getTemplate,
+  getAdminTemplates,
+  updateExercise,
+  deleteExercise,
+  deleteDay,
+  deleteTemplate
+} from '../controllers/workout.controllers.js';
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, fetchParticularCoupon, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
@@ -64,6 +75,7 @@ import { changePassword } from "../service/change.password.service.js";
 import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchParticularPlan, fetchPtPlans, fetchSubPlans, removeBenefits } from "../controllers/plans.controllers.js";
 import { approve, fetchAllRequests, fetchParticularRequest } from "../controllers/user.ptbill.temp.controllers.js";
 import { addOffer, deleteOffer, editOffer, fetchOffer, toggleOfferActive } from "../controllers/offer.controllers.js";
+import { assignWorkoutToUser, deleteAssignedWorkout, deleteExerciseFromAssignedWorkout, getAllAssignedWorkouts, getSingleAssignedWorkout, getUserWorkout, updateCurrentWeek, updateExerciseInAssignedWorkout, updateWorkoutStatus } from "../controllers/assignedWorkout.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -228,6 +240,37 @@ router.route("/offer/edit/:offerId").post(verifyJWT,isAdmin,editOffer)
 router.route("/offer/delete/:offerId").delete(verifyJWT,isAdmin,deleteOffer)
 router.route("/offer/toggle/:offerId").patch(verifyJWT,isAdmin,toggleOfferActive)
 router.route("/offer/fetch/all").get(verifyJWT,isAdmin,fetchOffer)
+
+
+// workout
+
+router.route("/create/template").post(verifyJWT,isAdmin,createWorkoutTemplate)
+router.route("/get/template/all").get(verifyJWT,isAdmin,getAdminTemplates)
+
+router.route("/get/template/:templateId").get(verifyJWT,isAdmin,getTemplate)
+router.route("/delete/template/:templateId").get(verifyJWT,isAdmin,deleteTemplate)
+router.route("/template/:templateId/days").post(verifyJWT,isAdmin,addDayToTemplate)
+router.route("/template/:templateId/days/:dayId").delete(verifyJWT,isAdmin,deleteDay)
+
+router.route("/template/:templateId/days/:dayId/exercises").post(verifyJWT,isAdmin,addExerciseToDay)
+router.route("/template/:templateId/days/:dayId/exercises/:exerciseId").put(updateExercise)
+router.route("/template/:templateId/days/:dayId/exercises/:exerciseId").delete(deleteExercise)
+
+
+// assing
+
+// Backend
+router.post('/assign/workout', verifyJWT, isAdmin, assignWorkoutToUser)
+router.get('/user/:userId/workout', verifyJWT, isAdmin, getUserWorkout)
+router.put('/workout/:workoutId/week/:weekNumber/day/:dayId/exercise/:exerciseId', verifyJWT, isAdmin, updateExerciseInAssignedWorkout)
+router.put('/workout/:workoutId/current-week', verifyJWT, isAdmin, updateCurrentWeek)
+router.put('/workout/:workoutId/status', verifyJWT, isAdmin, updateWorkoutStatus)
+router.delete('/workout/:workoutId', verifyJWT, isAdmin, deleteAssignedWorkout)
+router.get('/workouts/all', verifyJWT, isAdmin, getAllAssignedWorkouts)
+
+
+router.get('/workout/:workoutId', verifyJWT, isAdmin, getSingleAssignedWorkout)
+router.delete('/workout/:workoutId/week/:weekNumber/day/:dayId/exercise/:exerciseId', verifyJWT, isAdmin, deleteExerciseFromAssignedWorkout)
 
 
 export default router;

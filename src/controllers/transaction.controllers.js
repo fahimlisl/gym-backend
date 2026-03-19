@@ -100,6 +100,7 @@ const calculateStats = async (startDate) => {
     {
       $match: {
         status: "success",
+        source: { $ne: "expense" },
         paidAt: { $gte: startDate },
       },
     },
@@ -134,10 +135,9 @@ const fetchDashboardRevenue = asyncHandler(async (req, res) => {
   );
 });
 
-
 const fetchRevenueBySource = asyncHandler(async (req, res) => {
   const data = await Transaction.aggregate([
-    { $match: { status: "success" } },
+    { $match: { status: "success", source: { $ne: "expense" } } },
     {
       $group: {
         _id: "$source",
@@ -146,7 +146,6 @@ const fetchRevenueBySource = asyncHandler(async (req, res) => {
       },
     },
   ]);
-
   return res.status(200).json(
     new ApiResponse(200, data, "source wise revenue fetched")
   );
@@ -154,11 +153,14 @@ const fetchRevenueBySource = asyncHandler(async (req, res) => {
 
 
 const fetchRecentTransactions = asyncHandler(async (req, res) => {
-  const txns = await Transaction.find({ status: "success" })
+  const txns = await Transaction.find({ 
+    status: "success",
+    source: { $ne: "expense" } 
+  })
     .sort({ paidAt: -1 })
-    .limit(20)   // will be for a day , doesn't matter how much
+    .limit(20)
     .populate("user", "username phoneNumber")
-    .populate("referenceId")
+    .populate("referenceId");
 
   return res.status(200).json(
     new ApiResponse(200, txns, "recent transactions fetched")

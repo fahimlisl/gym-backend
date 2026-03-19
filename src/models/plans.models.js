@@ -4,7 +4,7 @@ const benefitsSchmea = new mongoose.Schema({
     heading:{
         type:String,
         required:true,
-        unique:true
+        // unique:true
     }
 },{timestamps:false})
 
@@ -28,7 +28,7 @@ const planSchema = new mongoose.Schema({
     duration:{
         type:String,
         // enum:["Monthly","Quaterly","Yearly","Half-Yearly"],
-        enum:["monthly","quaterly","yearly","half-yearly"],
+        enum:["monthly","quarterly","yearly","half-yearly"],
     },
     bio:{
         type:String

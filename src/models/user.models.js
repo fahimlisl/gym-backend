@@ -51,6 +51,10 @@ const userSchema = new mongoose.Schema(
     },
     resetPasswordToken:{
       type:String
+    },
+    workout:{
+      type: Schema.Types.ObjectId,
+      ref:"AssignedWorkout"
     }
   },
   { timestamps: true }
