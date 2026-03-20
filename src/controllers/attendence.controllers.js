@@ -1,5 +1,6 @@
 import { Attendance } from "../models/attendence.models.js";
 import { User } from "../models/user.models.js";
+import QRCode from "qrcode";
 
 // helper
 // const getTodayDate = () => {
@@ -176,3 +177,88 @@ export const getMemberMonthlyAttendance = async (req, res) => {
   }
 };
 
+export const getMyQR = async (req, res) => {
+  try {
+    const memberId = req.user._id.toString();
+    const qrDataURL = await QRCode.toDataURL(memberId, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: "#000000",
+         light: "#ffffff",
+      },
+    });
+
+    res.status(200).json({
+      qr: qrDataURL,
+      memberId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to generate QR",
+      error: error.message,
+    });
+  }
+};
+
+export const markAttendanceByQR = async (req, res) => {
+  try {
+    const { memberId } = req.body;
+
+    const member = await User.findById(memberId)
+      .select("username avatar subscription")
+      .populate("subscription");
+
+    if (!member) return res.status(404).json({ message: "Member not found" });
+
+    const subList = member.subscription?.subscription;
+    const latestSub = subList?.length ? subList[subList.length - 1] : null;
+    const isActive = latestSub?.status === "active";
+
+    if (!isActive) {
+      return res.status(403).json({
+        message: "Member is inactive",
+        username: member.username,
+        avatar: member.avatar?.url || null,
+        isActive: false,
+      });
+    }
+
+    const today = getTodayDate();
+
+    await Attendance.create({
+      member: member._id,
+      date: today,
+      markedBy: null,
+      source: "QR",
+    });
+
+    res.status(201).json({
+      message: "Attendance marked successfully",
+      username: member.username,
+      avatar: member.avatar?.url || null,
+      isActive: true,
+    });
+
+  } catch (error) {
+    if (error.code === 11000) {
+      const member = await User.findById(req.body.memberId)
+        .select("username avatar subscription")
+        .populate("subscription");
+
+      const subList = member?.subscription?.subscription;
+      const latestSub = subList?.length ? subList[subList.length - 1] : null;
+      const isActive = latestSub?.status === "active";
+
+      return res.status(400).json({
+        message: "Already checked in today",
+        username: member?.username || null,
+        avatar: member?.avatar?.url || null,
+        isActive,
+        alreadyMarked: true,
+      });
+    }
+
+    res.status(500).json({ message: "Failed to mark attendance", error: error.message });
+  }
+};

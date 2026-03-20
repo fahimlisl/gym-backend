@@ -15,6 +15,7 @@ import { Trainer } from "../models/trainer.models.js";
 import axios from "axios"
 import { Coupon } from "../models/coupon.models.js";
 import { Plan } from "../models/plans.models.js";
+import getNextSequence from "../utils/getNextSequence.js"
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -134,12 +135,15 @@ const registerUser = asyncHandler(async (req, res) => {
     }
   }
 
+  const serialNumber = await getNextSequence("user");
+
   const user = await User.create({
     username,
     email: email || "",
     phoneNumber,
     password: defaultPassword,
     isActive: true,
+    serialNumber,
     avatar:{
       url:avatarOnCloud.url,
       public_id:avatarOnCloud.public_id

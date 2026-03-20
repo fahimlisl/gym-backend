@@ -55,7 +55,11 @@ const userSchema = new mongoose.Schema(
     workout:{
       type: Schema.Types.ObjectId,
       ref:"AssignedWorkout"
-    }
+    },
+    serialNumber: {
+      type: Number,
+      unique: true,
+    },
   },
   { timestamps: true }
 );

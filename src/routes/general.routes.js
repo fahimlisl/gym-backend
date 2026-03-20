@@ -4,6 +4,7 @@ import { fetchAllTrainer, fetchParticularTrainer } from "../controllers/trainer.
 import { fetchAllPlans } from "../controllers/plans.controllers.js";
 import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
 import { fetchOffer } from "../controllers/offer.controllers.js";
+import { markAttendanceByQR } from "../controllers/attendence.controllers.js";
 
 const router = Router();
 
@@ -23,5 +24,7 @@ router.route("/plan/fetch/all").get(fetchAllPlans)
 //
 router.route("/coupon").post(fetchParticularCoupon)
 router.route("/offer/fetch/all").get(fetchOffer)
+// attendance public — no auth middleware
+router.post("/attendance/qr", markAttendanceByQR);
 
 export default router;
