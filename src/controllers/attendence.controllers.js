@@ -1,7 +1,8 @@
 import { Attendance } from "../models/attendence.models.js";
 import { User } from "../models/user.models.js";
 import QRCode from "qrcode";
-
+import axios from "axios"
+import { Subscription } from "../models/subscription.models.js";
 // helper
 // const getTodayDate = () => {
 //   return new Date().toISOString().split("T")[0]; // YYYY-MM-DD
@@ -21,9 +22,23 @@ export const markAttendance = async (req, res) => {
     if (!member) {
       return res.status(404).json({ message: "Member not found" });
     }
+    const p = await Subscription.findOne({user:member._id})
 
     if (!member.isActive) {
-      return res.status(403).json({ message: "Member is inactive" });
+        try {
+          await axios.post(process.env.N8N_WEBHOOK_URL, {
+            eventType: "subscription_expired",
+            memberName: member.username,
+            email: member.email,
+            phoneNumber: member.phoneNumber,
+            plan:p.subscription[p.subscription.length - 1].plan,
+            expiredDate:p.subscription[p.subscription.length - 1].endDate.toISOString(),
+            expiryNoticeDate: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error(`Failed to send renewal email to ${member.email}:`, error.message);
+        }
+        return res.status(403).json({ message: "Member is inactive" });
     }
 
     const today = getTodayDate();
@@ -206,7 +221,7 @@ export const markAttendanceByQR = async (req, res) => {
     const { memberId } = req.body;
 
     const member = await User.findById(memberId)
-      .select("username avatar subscription")
+      .select("username email phoneNumber avatar subscription")
       .populate("subscription");
 
     if (!member) return res.status(404).json({ message: "Member not found" });
@@ -214,8 +229,22 @@ export const markAttendanceByQR = async (req, res) => {
     const subList = member.subscription?.subscription;
     const latestSub = subList?.length ? subList[subList.length - 1] : null;
     const isActive = latestSub?.status === "active";
+    const p = await Subscription.findOne({user:member._id})
 
     if (!isActive) {
+        try {
+          await axios.post(process.env.N8N_WEBHOOK_URL, {
+            eventType: "subscription_expired",
+            memberName: member.username,
+            email: member.email,
+            phoneNumber: member.phoneNumber,
+            plan:p.subscription[p.subscription.length - 1].plan,
+            expiredDate:p.subscription[p.subscription.length - 1].endDate.toISOString(),
+            expiryNoticeDate: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error(`Failed to send renewal email to ${member.email}:`, error.message);
+        }
       return res.status(403).json({
         message: "Member is inactive",
         username: member.username,

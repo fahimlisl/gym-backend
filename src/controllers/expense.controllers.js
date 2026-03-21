@@ -14,13 +14,15 @@ const addExpense = asyncHandler(async(req,res) => {
     if((paymentMethod === "UPI") && !transactionId){
         throw new ApiError(400,"change payment method or provide upi transaction id")
     };
+    const p = paymentMethod.toLowerCase()
+
     const expense = await Expense.create({
         title,
         amount,
         remarks,
         category,
         transactionId:transactionId || null,
-        paymentMethod,
+        paymentMethod:p,
         createdBy:req.user._id
     });
     
@@ -30,7 +32,7 @@ const addExpense = asyncHandler(async(req,res) => {
         source:"expense",
         amount,
         referenceId:expense._id,
-        paymentMethod,
+        paymentMethod:p,
         referenceModel:"Expense",
         status:"success",
         user:req.user._id

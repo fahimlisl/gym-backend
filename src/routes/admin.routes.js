@@ -253,8 +253,8 @@ router.route("/template/:templateId/days").post(verifyJWT,isAdmin,addDayToTempla
 router.route("/template/:templateId/days/:dayId").delete(verifyJWT,isAdmin,deleteDay)
 
 router.route("/template/:templateId/days/:dayId/exercises").post(verifyJWT,isAdmin,addExerciseToDay)
-router.route("/template/:templateId/days/:dayId/exercises/:exerciseId").put(updateExercise)
-router.route("/template/:templateId/days/:dayId/exercises/:exerciseId").delete(deleteExercise)
+router.route("/template/:templateId/days/:dayId/exercises/:exerciseId").put(verifyJWT,isAdmin,updateExercise)
+router.route("/template/:templateId/days/:dayId/exercises/:exerciseId").delete(verifyJWT,isAdmin,deleteExercise)
 
 
 // assing
