@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {upload} from "../middlewares/multer.middlewares.js"
-import {renewalSubscription,  checkUser, fetchParticularUser, fetchProfile, loginUser, logOutUser, registerUser } from "../controllers/user.controllers.js";
+import {renewalSubscription,  checkUser, fetchParticularUser, fetchProfile, loginUser, logOutUser, registerUser, changePFP } from "../controllers/user.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import {approveCheck, getMyDiet} from "../controllers/diet.controllers.js"
@@ -27,6 +27,7 @@ router.route("/getProfile").get(verifyJWT,isUser,fetchProfile)
 router.route("/change/password").patch(verifyJWT,isUser,changePassword(User))
 router.route("/reset/password/token").post(generateresetPasswordToken(User))
 router.route("/reset/password").post(validateOTPandChangePassword(User))
+router.route("/change/pfp").patch(upload.single("avatar"),verifyJWT,isUser,changePFP)
 
 router.route("/subscription/renewal/:planId").post(verifyJWT,isUser,renewalSubscription)
 

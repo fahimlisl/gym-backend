@@ -40,6 +40,9 @@ const generateTempPtbill = asyncHandler(async (req, res) => {
         "coupon isn't able to find, contact administration!"
       );
     }
+    if (c.usageLimit && c.usedCount >= c.usageLimit) {
+      throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
+    }
     if (!c.isActive)
       throw new ApiError(400, "coupon is not active! contact administrator");
     if (c.category !== "PERSONAL TRAINING")
@@ -102,6 +105,13 @@ const generateTempPtbill = asyncHandler(async (req, res) => {
   });
 
   if (!tempBill) throw new ApiError(500, "internal server error!");
+
+    if (req.originalUrl.includes("/user/pt/request") && coupon && c && c.usageLimit) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from pt request route`);
+  }
 
   return res
     .status(200)

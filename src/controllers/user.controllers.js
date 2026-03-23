@@ -217,12 +217,12 @@ const registerUser = asyncHandler(async (req, res) => {
     console.log(`Coupon usage incremented from register route`);
   }
   // currently truning it off ! 
-  // else if(c.usageLimit && coupon && c) {
-  //   await Coupon.findByIdAndUpdate(c._id, {
-  //     $inc: { usedCount: 1 },
-  //   });
-  //   console.log(`Coupon usage incremented from normal admin route`);
-  // }
+  else if(coupon && c) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from normal admin route`);
+  }
 
   try {
   await axios.post(process.env.N8N_WEBHOOK_URL, {
@@ -460,6 +460,9 @@ const renewalSubscription = asyncHandler(async (req, res) => {
     if (!c) {
       throw new ApiError(400, "Coupon not found, contact administration!");
     }
+    if (c.usageLimit && c.usedCount >= c.usageLimit) {
+      throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
+    }
     if (!c.isActive) {
       throw new ApiError(400, "Coupon is not active! Contact administrator");
     }
@@ -575,6 +578,13 @@ const renewalSubscription = asyncHandler(async (req, res) => {
       $pop: { subscription: 1 },
     });
     throw new ApiError(400, "Failed to generate transaction");
+  }
+
+  if(coupon && c) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from normal route`);
   }
 
   try {
@@ -831,6 +841,12 @@ const assignPT = asyncHandler(async (req, res) => {
     });
     console.log(`Coupon usage incremented from pt request route`);
   }
+  else if(coupon && c) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from normal admin route`);
+  }
 
   try {
     const trainer = await Trainer.findById(trainerId);
@@ -878,6 +894,9 @@ const renewalPtSub = asyncHandler(async (req, res) => {
           400,
           "coupon isn't able to find, contact administration!"
         );
+      }
+      if (c.usageLimit && c.usedCount >= c.usageLimit) {
+        throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
       }
       if (!c.isActive)
         throw new ApiError(400, "coupon is not active! contact administrator");
@@ -994,6 +1013,13 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     referenceModel:"Ptbill"
   });
 
+    if(coupon && c) {
+    await Coupon.findByIdAndUpdate(c._id, {
+      $inc: { usedCount: 1 },
+    });
+    console.log(`Coupon usage incremented from normal admin route`);
+  }
+
   
   try {
     const trainer = await Trainer.findById(trainerId);
@@ -1040,6 +1066,55 @@ const fetchProfile = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "User profile fetched"));
 });
 
+const changePFP = asyncHandler(async(req,res) => {
+  const user = await User.findById(req.user._id);
+  if(!user) throw new ApiError(400,"wasn't able to found user! unauthorized");
+  const avatar = req.file.buffer;
+  if(!avatar) throw new ApiError(400,"wasn't able to found avatar, via req.file.buffer!");
+  let avatarOnCloud = await uploadOnCloudinary(req.file.buffer);
+  if (!avatarOnCloud) {
+    throw new ApiError(400, "failed to upload avatar");
+  }
+
+  if(user.avatar.url.startsWith("https://res.cloudinary.com")){
+    const d = await deleteFromCloudinary(user.avatar.public_id)
+    if(!d){
+      throw new ApiError(400,"wasn't able to delte asset from cloudinary")
+    }
+  }
+
+  const update = await User.findByIdAndUpdate(user._id,
+    {
+      $set:{
+        avatar:{
+          url:avatarOnCloud.url,
+          public_id:avatarOnCloud.public_id
+        }
+      }
+    },
+    {
+      new:true
+    }
+  )
+  .populate("subscription")     
+  .populate("personalTraning")  
+  .select("-password -refreshToken");
+
+  if(!update) {
+    throw new ApiError(500,"wasn't able to update avatar!");
+  }
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      update,
+      "profile photo has been successfully changed"
+    )
+  )
+})
+
 
 export {
   registerUser,
@@ -1053,5 +1128,6 @@ export {
   assignPT,
   renewalPtSub,
   fetchProfile,
-  checkUser
+  checkUser,
+  changePFP
 };
