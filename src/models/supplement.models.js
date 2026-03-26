@@ -18,9 +18,18 @@ const supplementSchema = new mongoose.Schema(
         "Fish Oil",
       ], // will add more as per requirment
     },
-    price: {
+    barcode:{
+      type:String,
+    },
+    salePrice: {
+      type: Number, // remove index from mongodb
+    },
+    quantity: { // will decrase one by one , when cafe items orders are placed one by one
       type: Number,
-      required: true, // have to apply option for copun
+      required: true,
+    },
+    purchasePrice:{
+      type: Number,
     },
     description: {
       type: String,

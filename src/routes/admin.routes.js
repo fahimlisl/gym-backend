@@ -113,7 +113,7 @@ router
   .route("/add-supplement")
   .post(upload.array("images", 6), verifyJWT, isAdmin, addSupplement);
 
-router.route("/edit-supplement/:id").patch(verifyJWT, isAdmin, editSupplement);
+router.route("/edit-supplement/:id").patch(upload.single("images"),verifyJWT, isAdmin, editSupplement);
 
 router
   .route("/destroy-supplement/:id")

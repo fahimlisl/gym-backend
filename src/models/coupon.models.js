@@ -34,7 +34,7 @@ const couponSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["CAFE", "ADMISSION", "SUBSCRIPTION", "PERSONAL TRAINING"], // WILL CONTROLE THIS VIA FRONTEND,
+      enum: ["CAFE", "ADMISSION", "SUBSCRIPTION", "PERSONAL TRAINING","SUPPLEMENT"], // WILL CONTROLE THIS VIA FRONTEND,
       required: true,
     },
     usedCount: {

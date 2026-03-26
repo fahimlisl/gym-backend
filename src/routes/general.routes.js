@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fetchAllSupp, fetchParticularSupp } from "../controllers/supplement.controllers.js";
+import { checkoutSupplements, checkUserSupp, fetchAllSupp, fetchParticularSupp, validateSupplementCoupon } from "../controllers/supplement.controllers.js";
 import { fetchAllTrainer, fetchParticularTrainer } from "../controllers/trainer.controllers.js";
 import { fetchAllPlans } from "../controllers/plans.controllers.js";
 import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
@@ -26,5 +26,9 @@ router.route("/coupon").post(fetchParticularCoupon)
 router.route("/offer/fetch/all").get(fetchOffer)
 // attendance public — no auth middleware
 router.post("/attendance/qr", markAttendanceByQR);
+
+router.post("/supplements/validate-coupon", validateSupplementCoupon);
+router.post("/supplements/checkout", checkoutSupplements);
+router.get("/user/check-phone/:phoneNumber",checkUserSupp)
 
 export default router;

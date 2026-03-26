@@ -31,7 +31,7 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       enum: [
         "Subscription",
-        "Supplement",
+        "SupplementBill",
         "Ptbill",
         "CafeOrder",
         "Expense",
