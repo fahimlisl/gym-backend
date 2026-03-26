@@ -357,7 +357,7 @@ const checkoutSupplements = async (req, res) => {
       total: totalAmount,
       paymentMethod,
       notes: notes || undefined,
-      status: "confirmed",
+      status: "pending",
     };
     
     if (isGuest) {
@@ -438,5 +438,34 @@ const checkUserSupp = asyncHandler(async(req,res) => {
     )
 })
 
-export { checkoutSupplements,addSupplement, editSupplement, destroySupplement ,checkUserSupp};
+const fetchAllSuppBill = asyncHandler(async (req, res) => {
+  const bills = await SupplementBill.find({}).sort({ createdAt: -1 });
+
+  return res.status(200).json(
+    new ApiResponse(200, bills, "All bills fetched successfully")
+  );
+});
+
+const toggleShipped = asyncHandler(async (req, res) => {
+  const bill = await SupplementBill.findById(req.params.billId);
+
+  if (!bill) throw new ApiError(404, "Bill not found!");
+
+  // confirmed → shipped → delivered → confirmed
+  const nextStatus = {
+    confirmed: "shipped",
+    shipped: "delivered",
+    delivered: "confirmed",
+  };
+
+  bill.status = nextStatus[bill.status] || "confirmed";
+  await bill.save();
+
+  return res.status(200).json(
+    new ApiResponse(200, bill, `Bill status updated to ${bill.status}`)
+  );
+});
+
+
+export { checkoutSupplements,addSupplement, editSupplement, destroySupplement ,checkUserSupp,toggleShipped,fetchAllSuppBill};
 export { fetchAllSupp, fetchParticularSupp };

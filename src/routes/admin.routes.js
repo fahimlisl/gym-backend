@@ -10,7 +10,9 @@ import {
   destroySupplement,
   editSupplement,
   fetchAllSupp,
+  fetchAllSuppBill,
   fetchParticularSupp,
+  toggleShipped,
 } from "../controllers/supplement.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 import { isAdmin } from "../middlewares/isAdmin.middlewares.js";
@@ -271,6 +273,13 @@ router.get('/workouts/all', verifyJWT, isAdmin, getAllAssignedWorkouts)
 
 router.get('/workout/:workoutId', verifyJWT, isAdmin, getSingleAssignedWorkout)
 router.delete('/workout/:workoutId/week/:weekNumber/day/:dayId/exercise/:exerciseId', verifyJWT, isAdmin, deleteExerciseFromAssignedWorkout)
+
+
+// 
+router.route("/fetch/supp/bill/all").get(verifyJWT,isAdmin,fetchAllSuppBill)
+router.route("/supp/bill/toggle/:billId").get(verifyJWT,isAdmin,toggleShipped)
+
+
 
 
 export default router;

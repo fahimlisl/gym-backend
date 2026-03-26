@@ -38,9 +38,9 @@ app.use(cookieParser());
 app.use(helmet());
 
 // routes
-app.use("/api/v1", limiter);
-app.use("/api/v1/user/login", authLimiter);
-app.use("/api/v1/admin/login", authLimiter);
+// app.use("/api/v1", limiter);
+// app.use("/api/v1/user/login", authLimiter);
+// app.use("/api/v1/admin/login", authLimiter);
 
 app.use("/api/v1/admin",adminRouter)
 app.use("/api/v1/user",userRouter)
