@@ -106,7 +106,8 @@ const generateTempPtbill = asyncHandler(async (req, res) => {
 
   if (!tempBill) throw new ApiError(500, "internal server error!");
 
-    if (req.originalUrl.includes("/user/pt/request") && coupon && c && c.usageLimit) {
+  // if (req.originalUrl.includes("/user/pt/request") && coupon && c && c.usageLimit) {
+  if (req.originalUrl.includes("/user/pt/request") && coupon && c) {
     await Coupon.findByIdAndUpdate(c._id, {
       $inc: { usedCount: 1 },
     });
@@ -306,7 +307,7 @@ const getTrainer = asyncHandler(async(req,res) => {
 
 
   if(!temp.isApproved){
-    throw new ApiError(400,"request has not been approved by admin!");
+    throw new ApiError(400,"request has not been approved by admin! or while verfication");
   }
   const trainer = await Trainer.findByIdAndUpdate(
     trainerId,
@@ -327,7 +328,7 @@ const getTrainer = asyncHandler(async(req,res) => {
   
   // deleteing image from cloudinary and temporary document from tempPtBill collection
   const t = await TempPtBill.findOneAndDelete({user:userId});
-  await deleteFromCloudinary(t.image.public_id);
+  // await deleteFromCloudinary(t.image.public_id); // our image doesn't exists now 
 
     try {
     const trainer = await Trainer.findById(trainerId);

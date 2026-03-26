@@ -221,7 +221,7 @@ export const markAttendanceByQR = async (req, res) => {
     const { memberId } = req.body;
 
     const member = await User.findById(memberId)
-      .select("username email phoneNumber avatar subscription")
+      .select("_id username email phoneNumber avatar subscription")
       .populate("subscription");
 
     if (!member) return res.status(404).json({ message: "Member not found" });
@@ -258,7 +258,7 @@ export const markAttendanceByQR = async (req, res) => {
     await Attendance.create({
       member: member._id,
       date: today,
-      markedBy: null,
+      markedBy: member._id,
       source: "QR",
     });
 

@@ -658,7 +658,7 @@ const editUser = asyncHandler(async (req, res) => {
 
 // will add a lil changes for fetching when users count is 0
 const fetchAllUser = asyncHandler(async (req, res) => {
-  const users = await User.find({}).populate("subscription");
+  const users = await User.find({}).populate("subscription").populate("personalTraning");
   if (!users) {
     return res
       .status(200)
