@@ -57,9 +57,9 @@ const subsSchema = new mongoose.Schema(
     },
     ref: {
       type: String,
-      required: function () {
-        return this.paymentMethod === "upi";
-      },
+      // required: function () {
+      //   return this.paymentMethod === "upi";
+      // },
     },
   },
   {timestamps:true}

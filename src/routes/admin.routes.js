@@ -78,6 +78,7 @@ import { addBenefits, addPlan, destroyPlan, editPlan, fetchAllPlans, fetchPartic
 import { approve, fetchAllRequests, fetchParticularRequest } from "../controllers/user.ptbill.temp.controllers.js";
 import { addOffer, deleteOffer, editOffer, fetchOffer, toggleOfferActive } from "../controllers/offer.controllers.js";
 import { assignWorkoutToUser, deleteAssignedWorkout, deleteExerciseFromAssignedWorkout, getAllAssignedWorkouts, getSingleAssignedWorkout, getUserWorkout, updateCurrentWeek, updateExerciseInAssignedWorkout, updateWorkoutStatus } from "../controllers/assignedWorkout.controllers.js";
+import { addPaymentIn, deletePaymentIn, editPaymentIn } from "../controllers/paymentIn.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -214,6 +215,10 @@ router.route("/add-expense").post(verifyJWT,isAdmin,addExpense)
 router.route("/fetchAllExpenses").get(verifyJWT,isAdmin,fetchAllExpenses)
 router.route("/fetchEquipmentsExpenses").get(verifyJWT,isAdmin,fetchEquipmentsExpenses)
 
+// payment In 
+router.route("/add/payment/in").post(verifyJWT,isAdmin,addPaymentIn)
+router.route("/edit/payment/in/:id").patch(verifyJWT,isAdmin,editPaymentIn)
+router.route("/delete/payment/in/:id").delete(verifyJWT,isAdmin,deletePaymentIn)
 
 
 

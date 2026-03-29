@@ -3,90 +3,95 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Transaction } from "../models/transaction.models.js";
 
+const CREDIT_SOURCES = ["subscription", "supplement", "personal-training", "cafe", "paymentin"];
+const DEBIT_SOURCES  = ["expense"];
+
+const getTransactionType = (source) =>
+  CREDIT_SOURCES.includes(source) ? "credit" : "debit";
+
 
 const fetchAllTransactions = asyncHandler(async (req, res) => {
   const transactions = await Transaction.find({})
-    .populate("referenceId") 
+    .populate("referenceId")
     .sort({ createdAt: -1 })
     .lean();
 
   const formatted = transactions.map((tx) => {
+    let base = {
+      ...tx,
+      type: getTransactionType(tx.source), // ← "credit" | "debit"
+    };
+
+    // Handle subscription sub-document matching
     if (
       tx.subReferenceId &&
       tx.referenceId &&
       Array.isArray(tx.referenceId.subscription)
     ) {
       const matchedSub = tx.referenceId.subscription.find(
-        (sub) =>
-          sub._id.toString() === tx.subReferenceId.toString()
+        (sub) => sub._id.toString() === tx.subReferenceId.toString()
       );
-
       return {
-        ...tx,
-        subDetail: matchedSub || null, 
+        ...base,
+        subDetail: matchedSub || null,
         referenceId: {
           _id: tx.referenceId._id,
           user: tx.referenceId.user || null,
         },
       };
     }
-    return tx;
+
+    return base;
   });
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      formatted,
-      "Successfully fetched all transactions"
-    )
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, formatted, "Successfully fetched all transactions"));
 });
 
 
+const calculateTotalInLet = asyncHandler(async (req, res) => {
+  const result = await Transaction.aggregate([
+    {
+      $match: {
+        status: "success",
+        source: { $in: CREDIT_SOURCES }, 
+      },
+    },
+    {
+      $group: {
+        _id: "$source",
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
-const calculateTotalInLet = asyncHandler(async(req,res) => {
-    const trans = await Transaction.find({})
-    let total = 0;
-    for(let i = 0 ; i <= trans.length - 1 ; i++){
-        total = total + trans[i].amount
-    }
+  const grandTotal = result.reduce((sum, s) => sum + s.total, 0);
+  const bySource   = Object.fromEntries(result.map((s) => [s._id, { total: s.total, count: s.count }]));
 
-    // category wise calculation will be done also
-
-    return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            total,
-            "total calculation have been done successfully"
-        )
-    )
-
-})
-
-// starting of calculation for weekly , daily , and monthly revenew chart
+  return res.status(200).json(
+    new ApiResponse(200, { grandTotal, bySource }, "Total calculation done successfully")
+  );
+});
 
 const getStartOfDay = () => {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
 };
-
 const getStartOfWeek = () => {
   const d = new Date();
   d.setDate(d.getDate() - 7);
   d.setHours(0, 0, 0, 0);
   return d;
 };
-
 const getStartOfMonth = () => {
   const d = new Date();
   d.setDate(1);
   d.setHours(0, 0, 0, 0);
   return d;
 };
-
 const getStartOfYear = () => {
   const d = new Date();
   d.setMonth(0, 1);
@@ -100,7 +105,7 @@ const calculateStats = async (startDate) => {
     {
       $match: {
         status: "success",
-        source: { $ne: "expense" },
+        source: { $in: CREDIT_SOURCES },
         paidAt: { $gte: startDate },
       },
     },
@@ -120,24 +125,26 @@ const calculateStats = async (startDate) => {
 };
 
 const fetchDashboardRevenue = asyncHandler(async (req, res) => {
-  const today = await calculateStats(getStartOfDay());
-  const weekly = await calculateStats(getStartOfWeek());
-  const monthly = await calculateStats(getStartOfMonth());
-  const yearly = await calculateStats(getStartOfYear());
+  const [today, weekly, monthly, yearly] = await Promise.all([
+    calculateStats(getStartOfDay()),
+    calculateStats(getStartOfWeek()),
+    calculateStats(getStartOfMonth()),
+    calculateStats(getStartOfYear()),
+  ]);
 
-  return res.status(200).json(
-    new ApiResponse(200, {
-      today,
-      weekly,
-      monthly,
-      yearly,
-    }, "dashboard revenue fetched successfully")
-  );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { today, weekly, monthly, yearly }, "Dashboard revenue fetched successfully"));
 });
 
 const fetchRevenueBySource = asyncHandler(async (req, res) => {
   const data = await Transaction.aggregate([
-    { $match: { status: "success", source: { $ne: "expense" } } },
+    {
+      $match: {
+        status: "success",
+        source: { $in: CREDIT_SOURCES },
+      },
+    },
     {
       $group: {
         _id: "$source",
@@ -145,35 +152,41 @@ const fetchRevenueBySource = asyncHandler(async (req, res) => {
         count: { $sum: 1 },
       },
     },
+    {
+      $addFields: {
+        type: "credit",
+      },
+    },
   ]);
-  return res.status(200).json(
-    new ApiResponse(200, data, "source wise revenue fetched")
-  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, data, "Source-wise revenue fetched"));
 });
 
-
 const fetchRecentTransactions = asyncHandler(async (req, res) => {
-  const txns = await Transaction.find({ 
-    status: "success",
-    source: { $ne: "expense" } 
-  })
+  const txns = await Transaction.find({ status: "success" }) 
     .sort({ paidAt: -1 })
     .limit(20)
     .populate("user", "username phoneNumber")
-    .populate("referenceId");
+    .populate("referenceId")
+    .lean();
 
-  return res.status(200).json(
-    new ApiResponse(200, txns, "recent transactions fetched")
-  );
+  const formatted = txns.map((tx) => ({
+    ...tx,
+    type: getTransactionType(tx.source), 
+  }));
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, formatted, "Recent transactions fetched"));
 });
 
+
 export {
+  fetchAllTransactions,
+  calculateTotalInLet,
   fetchDashboardRevenue,
   fetchRevenueBySource,
   fetchRecentTransactions,
 };
-
-
-
-
-export {fetchAllTransactions,calculateTotalInLet}

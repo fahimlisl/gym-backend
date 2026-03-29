@@ -10,7 +10,7 @@ const transactionSchema = new mongoose.Schema(
 
     source: {
       type: String,
-      enum: ["subscription", "supplement", "personal-training","cafe","expense"],
+      enum: ["subscription", "supplement", "personal-training","cafe","expense","paymentin"],
       required: true,
     },
 
@@ -35,6 +35,7 @@ const transactionSchema = new mongoose.Schema(
         "Ptbill",
         "CafeOrder",
         "Expense",
+        "PaymentIn"
       ],
     },
 
