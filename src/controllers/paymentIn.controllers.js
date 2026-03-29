@@ -1,7 +1,7 @@
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
-import { PaymentIn } from "../models/paymentin.models.js";
+import { PaymentIn } from "../models/paymentIn.models.js";
 import { Transaction } from "../models/transaction.models.js";
 
 const addPaymentIn = asyncHandler(async (req, res) => {
