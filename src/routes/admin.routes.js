@@ -67,6 +67,20 @@ import {
   deleteDay,
   deleteTemplate
 } from '../controllers/workout.controllers.js';
+import {
+  generateDiet,
+  approveDiet,
+  getMyDiet,
+  foodItemInserction,
+  showParticularDiet,
+  checkIfDietExists,
+  approveCheck,
+  setDietMacros,
+  removeItemFromDiet,
+  createMeal,
+  removeMeal,
+  editCalories,
+} from "../controllers/diet.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, fetchParticularCoupon, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
@@ -79,6 +93,7 @@ import { approve, fetchAllRequests, fetchParticularRequest } from "../controller
 import { addOffer, deleteOffer, editOffer, fetchOffer, toggleOfferActive } from "../controllers/offer.controllers.js";
 import { assignWorkoutToUser, deleteAssignedWorkout, deleteExerciseFromAssignedWorkout, getAllAssignedWorkouts, getSingleAssignedWorkout, getUserWorkout, updateCurrentWeek, updateExerciseInAssignedWorkout, updateWorkoutStatus } from "../controllers/assignedWorkout.controllers.js";
 import { addPaymentIn, deletePaymentIn, editPaymentIn } from "../controllers/paymentIn.controllers.js";
+import { addFood, getAllFoods } from "../controllers/food.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -283,6 +298,35 @@ router.delete('/workout/:workoutId/week/:weekNumber/day/:dayId/exercise/:exercis
 // 
 router.route("/fetch/supp/bill/all").get(verifyJWT,isAdmin,fetchAllSuppBill)
 router.route("/supp/bill/toggle/:billId").get(verifyJWT,isAdmin,toggleShipped)
+
+
+// diet
+
+router.post("/diet/generate", verifyJWT, 
+    isAdmin,
+     generateDiet);
+router.route("/diet/setMacros/:id").patch(verifyJWT,isAdmin,setDietMacros)
+
+router.patch("/diet/approve/:dietId", verifyJWT,
+    isAdmin,
+    approveDiet);
+
+
+router.route("/getAllFoods").get(verifyJWT,isAdmin,getAllFoods)
+
+
+// diet kinda thigns 
+
+router.route("/addFoodtoDB").post(verifyJWT,isAdmin,addFood)
+router.route("/addFood/:mealId").post(verifyJWT,isAdmin,foodItemInserction)
+router.route("/diet/show/:id").get(verifyJWT,isAdmin,showParticularDiet)
+router.route("/diet/check/:id").get(verifyJWT,isAdmin,checkIfDietExists)
+router.route("/diet/check/status/:id").get(verifyJWT,isAdmin,approveCheck)
+router.route("/diet/:userId/food/remove/:foodId/:mealId").patch(verifyJWT,isAdmin,removeItemFromDiet)
+router.route("/diet/add/meal/:id").patch(verifyJWT,isAdmin,createMeal)
+router.route("/diet/remove/meal/:mealId/:dietId").patch(verifyJWT,isAdmin,removeMeal)
+router.route("/diet/edit/calories/:dietId").patch(verifyJWT,isAdmin,editCalories)
+
 
 
 

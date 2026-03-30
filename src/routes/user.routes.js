@@ -57,6 +57,7 @@ router.route("/pt/request/approval/:tempBillId").post(verifyJWT,approve)
 // workout
 router.get('/workout', verifyJWT, isUser, getUserAssignedWorkout)
 
-router.route("/attendance/my-qr").get( verifyJWT,isUser, getMyQR);
+// router.route("/attendance/my-qr").get( verifyJWT,isUser, getMyQR);
+router.route("/attendance/my-qr").get( verifyJWT, getMyQR);
 
 export default router;

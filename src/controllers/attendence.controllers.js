@@ -194,19 +194,19 @@ export const getMemberMonthlyAttendance = async (req, res) => {
 
 export const getMyQR = async (req, res) => {
   try {
-    const memberId = req.user._id.toString();
-    const qrDataURL = await QRCode.toDataURL(memberId, {
+    const id = req.user._id.toString();
+    const qrDataURL = await QRCode.toDataURL(id, {
       width: 300,
       margin: 2,
       color: {
         dark: "#000000",
-         light: "#ffffff",
+        light: "#ffffff",
       },
     });
 
     res.status(200).json({
       qr: qrDataURL,
-      memberId,
+      memberId: id,
     });
   } catch (error) {
     res.status(500).json({

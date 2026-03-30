@@ -23,6 +23,7 @@ import {upload} from "../middlewares/multer.middlewares.js"
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
 import { Trainer } from "../models/trainer.models.js";
 import { changePassword } from "../service/change.password.service.js";
+import { getMyQR, getTodayAttendance } from "../controllers/attendence.controllers.js";
 
 const router = Router();
 
@@ -77,5 +78,8 @@ router.route("/diet/edit/calories/:dietId").patch(verifyJWT,isTrainer,editCalori
 //   registerUser
 // );
 
+
+router.route("/attendance/my-qr").get( verifyJWT, getMyQR);
+router.route("/today/attendence").get(verifyJWT,isTrainer,getTodayAttendance)
 
 export default router
