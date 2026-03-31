@@ -94,6 +94,7 @@ import { addOffer, deleteOffer, editOffer, fetchOffer, toggleOfferActive } from 
 import { assignWorkoutToUser, deleteAssignedWorkout, deleteExerciseFromAssignedWorkout, getAllAssignedWorkouts, getSingleAssignedWorkout, getUserWorkout, updateCurrentWeek, updateExerciseInAssignedWorkout, updateWorkoutStatus } from "../controllers/assignedWorkout.controllers.js";
 import { addPaymentIn, deletePaymentIn, editPaymentIn } from "../controllers/paymentIn.controllers.js";
 import { addFood, getAllFoods } from "../controllers/food.controllers.js";
+import { getAdminTodayOfTrainerAttendance, getSingleTrainerMonthlyAttendance, getTrainerMonthlyAttendance } from "../controllers/trainerAttendance.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -255,6 +256,10 @@ router.route("/month/attendence/:memberId").get(verifyJWT,isAdmin,getMemberMonth
 // /api/v1/admin/month/attendence?month=2026-04
 router.route("/month/attendence").get(verifyJWT,isAdmin,getMonthlyAttendance)
 
+// trianer attendacnes
+router.route("/attendance/trainer/today").get(verifyJWT,isAdmin,getAdminTodayOfTrainerAttendance)
+router.route("/attendance/trainer/month").get(verifyJWT,isAdmin,getTrainerMonthlyAttendance)
+router.route("/attendance/trainer/:trainerId/month").get(verifyJWT,isAdmin,getSingleTrainerMonthlyAttendance)
 
 // offer
 router.route("/offer/add").post(verifyJWT,isAdmin,addOffer)

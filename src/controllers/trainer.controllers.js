@@ -238,7 +238,7 @@ const fetchAllTrainer = asyncHandler(async (req, res) => {
 });
 
 const fetchParticularTrainer = asyncHandler(async (req, res) => {
-  const trainerId = req.params.id;
+  const trainerId = req.params.id || req.user._id;
   const trainer = await Trainer.findById(trainerId).select(
     "-password -refreshToken"
   );

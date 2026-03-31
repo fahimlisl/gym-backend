@@ -24,6 +24,9 @@ import { generateresetPasswordToken , validateOTPandChangePassword } from "../se
 import { Trainer } from "../models/trainer.models.js";
 import { changePassword } from "../service/change.password.service.js";
 import { getMyQR, getTodayAttendance } from "../controllers/attendence.controllers.js";
+import { getUserWorkout } from "../controllers/assignedWorkout.controllers.js";
+import { fetchAllUser } from "../controllers/user.controllers.js";
+import { getMyAttendance, getSingleTrainerMonthlyAttendance, getTrainerQR } from "../controllers/trainerAttendance.controllers.js";
 
 const router = Router();
 
@@ -35,19 +38,18 @@ router.route("/reset/password").post(validateOTPandChangePassword(Trainer))
 
 
 // Trainer / Admin
-router.post("/diet/generate", verifyJWT, 
-    isTrainer,
-     generateDiet);
-router.route("/diet/setMacros/:id").patch(verifyJWT,isTrainer,setDietMacros)
+// router.post("/diet/generate", verifyJWT, 
+//     isTrainer,
+//      generateDiet);
+// router.route("/diet/setMacros/:id").patch(verifyJWT,isTrainer,setDietMacros)
 
-router.patch("/diet/approve/:dietId", verifyJWT,
-    isTrainer,
-    approveDiet);
+// router.patch("/diet/approve/:dietId", verifyJWT,
+//     isTrainer,
+//     approveDiet);
 
 // User
 // router.get("/diet/my", verifyJWT, getMyDiet); // gotta put that on user file , after final confoermation 
 
-router.route("/fetchAssignedStudents").get(verifyJWT,isTrainer,fetchAssignedStudents)
 router.route("/fetchSelf").get(verifyJWT,isTrainer,fetchParticularTrainer)
 
 
@@ -69,17 +71,15 @@ router.route("/diet/remove/meal/:mealId/:dietId").patch(verifyJWT,isTrainer,remo
 router.route("/diet/edit/calories/:dietId").patch(verifyJWT,isTrainer,editCalories)
 
 
-// user 
-// router.post(
-//   "/register",
-//   verifyJWT,
-//   isTrainer, 
-//   upload.single("avatar"), 
-//   registerUser
-// );
+router.route("/attendance/my-qr").get( verifyJWT, getTrainerQR);
 
-
-router.route("/attendance/my-qr").get( verifyJWT, getMyQR);
 router.route("/today/attendence").get(verifyJWT,isTrainer,getTodayAttendance)
+router.route("/attendance/trainer/:trainerId/month").get(verifyJWT,isTrainer,getSingleTrainerMonthlyAttendance)
+router.route("/attendance/trainer/my").get(verifyJWT,isTrainer,getMyAttendance)
+
+// fetch Students
+router.get('/user/:userId/workout', verifyJWT, isTrainer, getUserWorkout)
+router.route("/fetchAllUser").get(verifyJWT, isTrainer, fetchAllUser);
+router.route("/fetchAssignedStudents").get(verifyJWT,isTrainer,fetchAssignedStudents)
 
 export default router
