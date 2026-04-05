@@ -26,7 +26,7 @@ import { changePassword } from "../service/change.password.service.js";
 import { getMyQR, getTodayAttendance } from "../controllers/attendence.controllers.js";
 import { getUserWorkout } from "../controllers/assignedWorkout.controllers.js";
 import { fetchAllUser } from "../controllers/user.controllers.js";
-import { getMyAttendance, getSingleTrainerMonthlyAttendance, getTrainerQR } from "../controllers/trainerAttendance.controllers.js";
+import { getMyAttendance, getSingleTrainerMonthlyAttendance, getTrainerQR, markTrainerAttendanceByGymQR } from "../controllers/trainerAttendance.controllers.js";
 
 const router = Router();
 
@@ -76,6 +76,7 @@ router.route("/attendance/my-qr").get( verifyJWT, getTrainerQR);
 router.route("/today/attendence").get(verifyJWT,isTrainer,getTodayAttendance)
 router.route("/attendance/trainer/:trainerId/month").get(verifyJWT,isTrainer,getSingleTrainerMonthlyAttendance)
 router.route("/attendance/trainer/my").get(verifyJWT,isTrainer,getMyAttendance)
+router.post("/attendance/trainer/gym-qr", verifyJWT, isTrainer, markTrainerAttendanceByGymQR)
 
 // fetch Students
 router.get('/user/:userId/workout', verifyJWT, isTrainer, getUserWorkout)

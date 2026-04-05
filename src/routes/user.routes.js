@@ -11,7 +11,7 @@ import { fetchAllPlans, fetchParticularPlan, fetchPtPlans, fetchSubPlans } from 
 import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
 import { isUser } from "../middlewares/isUser.middlewares.js"
 import { getUserAssignedWorkout } from "../controllers/assignedWorkout.controllers.js";
-import { getMyQR } from "../controllers/attendence.controllers.js";
+import { getMyQR, markAttendanceByGymQR } from "../controllers/attendence.controllers.js";
 const router = Router();
 
 
@@ -59,5 +59,5 @@ router.get('/workout', verifyJWT, isUser, getUserAssignedWorkout)
 
 // router.route("/attendance/my-qr").get( verifyJWT,isUser, getMyQR);
 router.route("/attendance/my-qr").get( verifyJWT, getMyQR);
-
+router.post("/attendance/gym-qr", verifyJWT, isUser, markAttendanceByGymQR);
 export default router;

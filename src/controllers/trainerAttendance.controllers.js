@@ -180,3 +180,51 @@ export const getMyAttendance = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch your attendance", error: error.message });
   }
 };
+
+
+export const markTrainerAttendanceByGymQR = async (req, res) => {
+  try {
+    const trainer = await Trainer.findById(req.user._id).select(
+      "_id fullName email phoneNumber avatar"
+    );
+    if (!trainer) return res.status(404).json({ message: "Trainer not found" });
+
+    const today = getTodayDate();
+    const existing = await TrainerAttendance.findOne({ trainer: trainer._id, date: today });
+
+    if (existing?.checkOut) {
+      return res.status(400).json({
+        message: "Already checked out for today",
+        fullName: trainer.fullName,
+        avatar: trainer.avatar?.url || null,
+        alreadyCheckedOut: true,
+      });
+    }
+
+    if (existing && !existing.checkOut) {
+      existing.checkOut = new Date();
+      await existing.save();
+      return res.status(200).json({
+        message: "Checked out successfully",
+        fullName: trainer.fullName,
+        avatar: trainer.avatar?.url || null,
+        isCheckout: true,
+      });
+    }
+
+    await TrainerAttendance.create({
+      trainer: trainer._id,
+      date: today,
+      source: "QR",
+    });
+
+    res.status(201).json({
+      message: "Attendance marked successfully",
+      fullName: trainer.fullName,
+      avatar: trainer.avatar?.url || null,
+      isCheckout: false,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to mark attendance", error: error.message });
+  }
+};

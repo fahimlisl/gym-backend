@@ -291,3 +291,66 @@ export const markAttendanceByQR = async (req, res) => {
     res.status(500).json({ message: "Failed to mark attendance", error: error.message });
   }
 };
+
+
+export const markAttendanceByGymQR = async (req, res) => {
+  try {
+    const member = await User.findById(req.user._id)
+      .select("_id username email phoneNumber avatar")
+      .populate("subscription");
+
+    if (!member) return res.status(404).json({ message: "Member not found" });
+
+    const subList = member.subscription?.subscription;
+    const latestSub = subList?.length ? subList[subList.length - 1] : null;
+    const isActive = latestSub?.status === "active";
+
+    if (!isActive) {
+      try {
+        const p = await Subscription.findOne({ user: member._id });
+        await axios.post(process.env.N8N_WEBHOOK_URL, {
+          eventType: "subscription_expired",
+          memberName: member.username,
+          email: member.email,
+          phoneNumber: member.phoneNumber,
+          plan: p.subscription[p.subscription.length - 1].plan,
+          expiredDate: p.subscription[p.subscription.length - 1].endDate.toISOString(),
+          expiryNoticeDate: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.error(`Failed to send renewal email to ${member.email}:`, err.message);
+      }
+      return res.status(403).json({
+        message: "Member is inactive",
+        username: member.username,
+        avatar: member.avatar?.url || null,
+        isActive: false,
+      });
+    }
+
+    const today = getTodayDate();
+
+    await Attendance.create({
+      member: member._id,
+      date: today,
+      markedBy: member._id,
+      source: "QR",
+    });
+
+    res.status(201).json({
+      message: "Attendance marked successfully",
+      username: member.username,
+      avatar: member.avatar?.url || null,
+      isActive: true,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: "Already checked in today",
+        username: req.user?.username || null,
+        alreadyMarked: true,
+      });
+    }
+    res.status(500).json({ message: "Failed to mark attendance", error: error.message });
+  }
+};
