@@ -21,6 +21,16 @@ const trainerSchema = new mongoose.Schema({
         type:String,
         required:true
     },
+    bonus:{
+      totalBonus: {
+        type:Number,
+        default:0
+      },
+      monthBonus: {
+        type:Number,
+        default:0
+      }
+    },
     refreshToken:{
         type:String
     },

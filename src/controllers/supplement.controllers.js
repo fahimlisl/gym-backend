@@ -7,6 +7,8 @@ import { SupplementBill } from "../models/supplementBill.models.js";
 import { User } from "../models/user.models.js";
 import { Coupon } from "../models/coupon.models.js";
 import {Transaction} from "../models/transaction.models.js"
+import { TrainerCoupon } from "../models/trainercoupon.models.js";
+import { Trainer } from "../models/trainer.models.js";
 
 const addSupplement = asyncHandler(async (req, res) => {
   const { productName, category, salePrice, purchasePrice, quantity, description, barcode } = req.body;
@@ -229,6 +231,7 @@ const checkoutSupplements = async (req, res) => {
       cart,
       customerInfo,
       couponCode,
+      ReferralCode,
       paymentMethod = "razorpay", 
       notes,
       subtotal,
@@ -341,6 +344,53 @@ const checkoutSupplements = async (req, res) => {
       await Coupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
     }
 
+    let referralPayload = {
+      amount: 0,
+      code: undefined
+    }
+
+    if (ReferralCode) {
+      const coupon = await TrainerCoupon.findOne({
+        code: ReferralCode.toUpperCase(),
+        isActive: true,
+      });
+      if (!coupon) {
+        return res.status(400).json({ success: false, message: "Invalid coupon" });
+      }
+      if (coupon.expiryDate && new Date() > new Date(coupon.expiryDate)) {
+        return res.status(400).json({ success: false, message: "Coupon expired" });
+      }
+      if (coupon.minCartAmount && subtotal < coupon.minCartAmount) {
+        return res.status(400).json({
+          success: false,
+          message: `Minimum cart amount of ₹${coupon.minCartAmount} required`,
+        });
+      }
+
+      let amountForTrainer;
+      if (coupon.typeOfCoupon === "percentage") {
+        amountForTrainer = (subtotal * coupon.value) / 100;
+        if (coupon.maxDiscount) amountForTrainer = Math.min(amountForTrainer, coupon.maxDiscount);
+      } else {
+        amountForTrainer = coupon.value;
+      }
+      amountForTrainer = Math.min(amountForTrainer, subtotal);
+      
+      referralPayload = {
+        amount: amountForTrainer,
+        code: coupon.code,
+      };
+      await Trainer.findByIdAndUpdate(coupon.trainerId,
+        {
+          $inc: { "bonus.totalBonus": amountForTrainer, "bonus.monthBonus": amountForTrainer }
+        },
+        {
+          new:true
+        }
+      )
+      await TrainerCoupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
+    }
+
     for (const item of items) {
       await Supplement.findByIdAndUpdate(item.productId, {
         $inc: { quantity: -item.quantity },
@@ -356,6 +406,7 @@ const checkoutSupplements = async (req, res) => {
       discountAmount: Number(discountAmount), 
       total: totalAmount,
       paymentMethod,
+      referral:referralPayload,
       notes: notes || undefined,
       status: "pending",
     };

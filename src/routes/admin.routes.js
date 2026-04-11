@@ -95,6 +95,7 @@ import { assignWorkoutToUser, deleteAssignedWorkout, deleteExerciseFromAssignedW
 import { addPaymentIn, deletePaymentIn, editPaymentIn } from "../controllers/paymentIn.controllers.js";
 import { addFood, getAllFoods } from "../controllers/food.controllers.js";
 import { getAdminTodayOfTrainerAttendance, getSingleTrainerMonthlyAttendance, getTrainerMonthlyAttendance } from "../controllers/trainerAttendance.controllers.js";
+import { addTrainerCoupon, destroyTrainerCoupon, editTrainerCoupons, fetchAllTrainerCoupons, fetchParticularTrainerCoupon, toggleTrainerCouponExpire } from "../controllers/trainercoupon.controllers.js";
 const router = Router();
 
 router.route("/register").post(registerAdmin);
@@ -225,6 +226,14 @@ router.route("/edit-coupon/:id").patch(verifyJWT,isAdmin,editCoupons)
 router.route("/toggleCouponExpire/:id").patch(verifyJWT,isAdmin,toggleCouponExpire)
 router.route("/destroyCoupon/:id").delete(verifyJWT,isAdmin,destroyCoupon)
 router.route("/coupon").post(verifyJWT,isAdmin,fetchParticularCoupon)
+
+// trainerCoupon
+router.route("/add/trainer/coupon/:trainerId").post(verifyJWT,isAdmin,addTrainerCoupon)
+router.route("/fetch/trainer/coupon/all").get(verifyJWT,isAdmin,fetchAllTrainerCoupons)
+router.route("/edit/trainer/coupon/:id").patch(verifyJWT,isAdmin,editTrainerCoupons)
+router.route("/toggle/trainer/coupon/:id").patch(verifyJWT,isAdmin,toggleTrainerCouponExpire)
+router.route("/fetch/trainer/coupon").post(verifyJWT,isAdmin,fetchParticularTrainerCoupon)
+router.route("/destroy/trainer/coupon/:id").delete(verifyJWT, isAdmin, destroyTrainerCoupon)
 
 // expense
 router.route("/add-expense").post(verifyJWT,isAdmin,addExpense)

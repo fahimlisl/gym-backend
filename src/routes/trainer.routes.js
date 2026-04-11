@@ -27,6 +27,7 @@ import { getMyQR, getTodayAttendance } from "../controllers/attendence.controlle
 import { getUserWorkout } from "../controllers/assignedWorkout.controllers.js";
 import { fetchAllUser } from "../controllers/user.controllers.js";
 import { getMyAttendance, getSingleTrainerMonthlyAttendance, getTrainerQR, markTrainerAttendanceByGymQR } from "../controllers/trainerAttendance.controllers.js";
+import { fetchCouponForTrainerSelf } from "../controllers/trainercoupon.controllers.js";
 
 const router = Router();
 
@@ -51,6 +52,7 @@ router.route("/reset/password").post(validateOTPandChangePassword(Trainer))
 // router.get("/diet/my", verifyJWT, getMyDiet); // gotta put that on user file , after final confoermation 
 
 router.route("/fetchSelf").get(verifyJWT,isTrainer,fetchParticularTrainer)
+router.route("/fetch/self/coupon").get(verifyJWT,isTrainer,fetchCouponForTrainerSelf)
 
 
 // food

@@ -17,7 +17,7 @@ const supplementBillSchema = new mongoose.Schema(
       {
         productId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Product",
+          ref: "Supplement",
           required: true,
         },
         productName: {
@@ -62,6 +62,15 @@ const supplementBillSchema = new mongoose.Schema(
         type: String,
         uppercase: true,
       },
+    },
+
+    referral: {
+      code: {
+        type:String
+      },
+      amount: {
+        type:Number
+      }
     },
 
     subtotal: {
