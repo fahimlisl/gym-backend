@@ -6,6 +6,7 @@ import { connectDB } from "./db/index.js";
 import "./cron/couponExpire.cron.js"; 
 import "./cron/subscriptionExpire.cron.js"
 import "./cron/ptExpiry.cron.js"
+import "./cron/resetTrainerBonus.cron.js"
 
 dotenv.config({
     path:"./.env"
