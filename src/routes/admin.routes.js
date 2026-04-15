@@ -82,7 +82,7 @@ import {
   editCalories,
 } from "../controllers/diet.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, fetchParticularCoupon, toggleCouponExpire } from "../controllers/coupon.controllers.js";
-import { addExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
+import { addExpense, destroyExpense, editExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
 import { testSubscriptionExpiry } from "../cron/subscriptionExpire.cron.js";
 import { getMemberMonthlyAttendance, getMonthlyAttendance, getTodayAttendance, markAttendance } from "../controllers/attendence.controllers.js";
 import { generateresetPasswordToken , validateOTPandChangePassword } from "../service/reset.service.js"
@@ -239,6 +239,8 @@ router.route("/destroy/trainer/coupon/:id").delete(verifyJWT, isAdmin, destroyTr
 router.route("/add-expense").post(verifyJWT,isAdmin,addExpense)
 router.route("/fetchAllExpenses").get(verifyJWT,isAdmin,fetchAllExpenses)
 router.route("/fetchEquipmentsExpenses").get(verifyJWT,isAdmin,fetchEquipmentsExpenses)
+router.route("/delete-expense/:expnseId").delete(verifyJWT,isAdmin,destroyExpense)
+router.route("/edit-expense/:id").patch(verifyJWT,isAdmin,editExpense)
 
 // payment In 
 router.route("/add/payment/in").post(verifyJWT,isAdmin,addPaymentIn)
