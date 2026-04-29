@@ -70,16 +70,10 @@ import {
 import {
   generateDiet,
   approveDiet,
-  getMyDiet,
-  foodItemInserction,
   showParticularDiet,
   checkIfDietExists,
   approveCheck,
-  setDietMacros,
-  removeItemFromDiet,
-  createMeal,
-  removeMeal,
-  editCalories,
+  editDiet,
 } from "../controllers/diet.controllers.js";
 import { addCoupon, destroyCoupon, editCoupons, fetchAllCoupons, fetchParticularCoupon, toggleCouponExpire } from "../controllers/coupon.controllers.js";
 import { addExpense, destroyExpense, editExpense, fetchAllExpenses, fetchEquipmentsExpenses } from "../controllers/expense.controllers.js";
@@ -317,31 +311,21 @@ router.route("/supp/bill/toggle/:billId").get(verifyJWT,isAdmin,toggleShipped)
 
 
 // diet
-
-router.post("/diet/generate", verifyJWT, 
-    isAdmin,
-     generateDiet);
-router.route("/diet/setMacros/:id").patch(verifyJWT,isAdmin,setDietMacros)
+router.post("/diet/generate", verifyJWT,isAdmin, upload.array("photos"), generateDiet);
+router.patch("/diet/edit/:dietId", verifyJWT,isAdmin, upload.array("photos"), editDiet);
 
 router.patch("/diet/approve/:dietId", verifyJWT,
     isAdmin,
     approveDiet);
-
-
 router.route("/getAllFoods").get(verifyJWT,isAdmin,getAllFoods)
 
 
 // diet kinda thigns 
 
 router.route("/addFoodtoDB").post(verifyJWT,isAdmin,addFood)
-router.route("/addFood/:mealId").post(verifyJWT,isAdmin,foodItemInserction)
 router.route("/diet/show/:id").get(verifyJWT,isAdmin,showParticularDiet)
 router.route("/diet/check/:id").get(verifyJWT,isAdmin,checkIfDietExists)
 router.route("/diet/check/status/:id").get(verifyJWT,isAdmin,approveCheck)
-router.route("/diet/:userId/food/remove/:foodId/:mealId").patch(verifyJWT,isAdmin,removeItemFromDiet)
-router.route("/diet/add/meal/:id").patch(verifyJWT,isAdmin,createMeal)
-router.route("/diet/remove/meal/:mealId/:dietId").patch(verifyJWT,isAdmin,removeMeal)
-router.route("/diet/edit/calories/:dietId").patch(verifyJWT,isAdmin,editCalories)
 
 
 

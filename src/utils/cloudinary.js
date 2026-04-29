@@ -14,7 +14,7 @@ cloudinary.config({
 const uploadOnCloudinary = async (fileBuffer) => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
-      { folder: "gym" },
+      { folder: "gym" , resource_type:"auto"},
       (error, result) => {
         if (error) return reject(error);
         resolve({
@@ -27,21 +27,34 @@ const uploadOnCloudinary = async (fileBuffer) => {
 };
 
 
-const deleteFromCloudinary = async(filePath) => {
-    try {
-        if (!filePath) {
-            throw new ApiError(400,"file wasn't able to found")
-        }
-        const deleteFCloud = await cloudinary.uploader.destroy(filePath,{
-            resource_type:"image"
-        })
-        if (!deleteFCloud) {
-            throw new ApiError(500,"wasn't abel to delete that particular file form cloud")
-        }
-        return deleteFCloud
-    } catch (error) {
-        throw new ApiError(500,error.message || `got error while deleting file from cloudinary`)
+const deleteFromCloudinary = async (filePath) => {
+  try {
+    if (!filePath) {
+      throw new ApiError(400, "file wasn't able to be found");
     }
-}
+    console.log("deleting cloduainry files in here")
+
+    let result = await cloudinary.uploader.destroy(filePath, {
+      resource_type: "image",
+    });
+
+    if (result.result === "not found") {
+      result = await cloudinary.uploader.destroy(filePath, {
+        resource_type: "raw",
+      });
+    }
+
+    if (result.result === "not found") {
+      throw new ApiError(500, "File not found in Cloudinary");
+    }
+
+    return result;
+  } catch (error) {
+    throw new ApiError(
+      500,
+      error.message || `Got error while deleting file from Cloudinary`
+    );
+  }
+};
 
 export {uploadOnCloudinary,deleteFromCloudinary}
