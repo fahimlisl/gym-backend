@@ -13,13 +13,14 @@ const getTransactionType = (source) =>
 const fetchAllTransactions = asyncHandler(async (req, res) => {
   const transactions = await Transaction.find({})
     .populate("referenceId")
+    .populate("user")
     .sort({ createdAt: -1 })
     .lean();
 
   const formatted = transactions.map((tx) => {
     let base = {
       ...tx,
-      type: getTransactionType(tx.source), // ← "credit" | "debit"
+      type: getTransactionType(tx.source), 
     };
 
     // Handle subscription sub-document matching
