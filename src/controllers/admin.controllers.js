@@ -6,7 +6,7 @@ import generateAccessAndRefreshToken from "../utils/generateANR.js";
 import { options } from "../utils/options.js";
 
 const registerAdmin = asyncHandler(async (req, res) => {
-  const { username, email, password, phoneNumber } = req.body;
+  const { username, email, password, phoneNumber ,isSuperAdmin} = req.body;
 
   if ([username, email, password].some((fild) => fild.trim() === "")) {
     throw new ApiError(401, "all fields are required");
@@ -19,6 +19,7 @@ const registerAdmin = asyncHandler(async (req, res) => {
     email,
     password,
     phoneNumber,
+    isSuperAdmin
   });
 
   const createdAdmin = await Admin.findById(admin._id).select(
@@ -113,4 +114,19 @@ const logOutAdmin = asyncHandler(async (req, res) => {
 });
 
 
-export { registerAdmin, loginAdmin, logOutAdmin };
+const getAdminProfile = asyncHandler(async (req, res) => {
+  const admin = await Admin.findById(req.user._id).select("-password -refreshToken");
+
+  if (!admin) {
+    throw new ApiError(404, "Admin not found");
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Admin profile retrieved successfully",
+    admin,
+  });
+});
+
+
+export { registerAdmin, loginAdmin, logOutAdmin , getAdminProfile};

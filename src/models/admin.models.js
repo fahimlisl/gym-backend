@@ -28,7 +28,11 @@ const adminSchema = new mongoose.Schema(
     },
     resetPasswordToken:{
       type:String
-    }
+    },
+    isSuperAdmin:{
+      type:Boolean,
+      default:false
+    },
   },
   { timestamps: true }
 );
