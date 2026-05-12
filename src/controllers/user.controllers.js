@@ -16,7 +16,7 @@ import axios from "axios"
 import { Coupon } from "../models/coupon.models.js";
 import { Plan } from "../models/plans.models.js";
 import getNextSequence from "../utils/getNextSequence.js"
-
+import { TrainerCoupon } from "../models/trainercoupon.models.js"
 
 const registerUser = asyncHandler(async (req, res) => {
   const {
@@ -31,7 +31,8 @@ const registerUser = asyncHandler(async (req, res) => {
     discountOnAdFee,
     paymentId,
     orderId,
-    coupon, // ✅ NEW
+    coupon, 
+    ReferralCode
   } = req.body;
 
   if (!planId) {
@@ -222,6 +223,54 @@ const registerUser = asyncHandler(async (req, res) => {
       $inc: { usedCount: 1 },
     });
     console.log(`Coupon usage incremented from normal admin route`);
+  }
+
+  // starting form here for trianer coupon or can say referral code
+  let referralPayload = {
+    amount: 0,
+    code: undefined
+  }
+
+  if (ReferralCode) {
+    const coupon = await TrainerCoupon.findOne({
+      code: ReferralCode.toUpperCase(),
+      isActive: true,
+    });
+    if (!coupon) {
+      return res.status(400).json({ success: false, message: "Invalid coupon" });
+    }
+    if (coupon.expiryDate && new Date() > new Date(coupon.expiryDate)) {
+      return res.status(400).json({ success: false, message: "Coupon expired" });
+    }
+    if (coupon.minCartAmount && subtotal < coupon.minCartAmount) {
+      return res.status(400).json({
+        success: false,
+        message: `Minimum cart amount of ₹${coupon.minCartAmount} required`,
+      });
+    }  
+    let amountForTrainer;
+    if (coupon.typeOfCoupon === "percentage") {
+      amountForTrainer = (totalAmount * coupon.value) / 100;
+      console.log("the log of amoutnFor Trianer is : ",amountForTrainer)
+      if (coupon.maxDiscount) amountForTrainer = Math.min(amountForTrainer, coupon.maxDiscount);
+    } else {
+      amountForTrainer = coupon.value;
+    }
+    amountForTrainer = Math.min(amountForTrainer, totalAmount);
+    
+    referralPayload = {
+      amount: amountForTrainer,
+      code: coupon.code,
+    };
+    await Trainer.findByIdAndUpdate(coupon.trainerId,
+      {
+        $inc: { "bonus.totalBonus": amountForTrainer, "bonus.monthBonus": amountForTrainer }
+      },
+      {
+        new:true
+      }
+    )
+    await TrainerCoupon.findByIdAndUpdate(coupon._id, { $inc: { usedCount: 1 } });
   }
 
   try {
