@@ -65,6 +65,14 @@ const regularSchema = new mongoose.Schema({
       type: Number,
       required: true,
     },
+    createdBy:{
+      type:Schema.Types.ObjectId,
+      ref:"Admin"
+    },
+    updatedBy:{
+      type:Schema.Types.ObjectId,
+      ref:"Admin"
+    }
 },{timestamps:true})
 
 const ptillSchema = new mongoose.Schema({
@@ -76,7 +84,7 @@ const ptillSchema = new mongoose.Schema({
     subscription:{
       type:[regularSchema]
     }
-    
+
   },
   { timestamps: true }
 );

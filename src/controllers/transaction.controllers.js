@@ -101,19 +101,30 @@ const getStartOfYear = () => {
 };
 
 
-const calculateStats = async (startDate) => {
+const calculateStats = async (startDate = null) => {
+  const matchFilter = {
+    status: "success",
+    source: { $in: [...CREDIT_SOURCES, ...DEBIT_SOURCES] },
+  };
+
+  if (startDate) {
+    matchFilter.paidAt = { $gte: startDate };
+  }
+
   const result = await Transaction.aggregate([
-    {
-      $match: {
-        status: "success",
-        source: { $in: CREDIT_SOURCES },
-        paidAt: { $gte: startDate },
-      },
-    },
+    { $match: matchFilter },
     {
       $group: {
         _id: null,
-        totalAmount: { $sum: "$amount" },
+        totalAmount: {
+          $sum: {
+            $cond: [
+              { $in: ["$source", CREDIT_SOURCES] },
+              "$amount",
+              { $multiply: ["$amount", -1] }
+            ]
+          }
+        },
         totalTransactions: { $sum: 1 },
       },
     },
@@ -126,16 +137,17 @@ const calculateStats = async (startDate) => {
 };
 
 const fetchDashboardRevenue = asyncHandler(async (req, res) => {
-  const [today, weekly, monthly, yearly] = await Promise.all([
+  const [today, weekly, monthly, yearly,lifetime] = await Promise.all([
     calculateStats(getStartOfDay()),
     calculateStats(getStartOfWeek()),
     calculateStats(getStartOfMonth()),
     calculateStats(getStartOfYear()),
+    calculateStats(),
   ]);
 
   return res
     .status(200)
-    .json(new ApiResponse(200, { today, weekly, monthly, yearly }, "Dashboard revenue fetched successfully"));
+    .json(new ApiResponse(200, { today, weekly, monthly, yearly,lifetime }, "Dashboard revenue fetched successfully"));
 });
 
 const fetchRevenueBySource = asyncHandler(async (req, res) => {

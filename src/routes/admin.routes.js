@@ -27,6 +27,8 @@ import {
 } from "../controllers/trainer.controllers.js";
 import {
   assignPT,
+  changeTrainer,
+  checkIfTempBillExist,
   destroyUser,
   editUser,
   fetchAllUser,
@@ -152,6 +154,8 @@ router.route("/fetchParticularUser/:id").get(verifyJWT, isAdmin, fetchParticular
 // personal training
 router.route("/personal-training/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, assignPT);
 router.route("/personal-training-renewal/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, renewalPtSub);
+router.route("/personal-training/change/trainer/:member_id/:trainer_id").patch(verifyJWT,isAdmin,changeTrainer)
+router.route("/personal-training/check/self/pt/:userId").get(verifyJWT,isAdmin,checkIfTempBillExist)
 
 // supplement
 router.route("/add-supplement").post(upload.array("images", 6), verifyJWT, isAdmin, addSupplement);

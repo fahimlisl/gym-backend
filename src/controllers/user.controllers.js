@@ -17,6 +17,7 @@ import { Coupon } from "../models/coupon.models.js";
 import { Plan } from "../models/plans.models.js";
 import getNextSequence from "../utils/getNextSequence.js"
 import { TrainerCoupon } from "../models/trainercoupon.models.js"
+import { TempPtBill } from "../models/ptbill.temp.models.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const {
@@ -745,6 +746,31 @@ const fetchParticularUser = asyncHandler(async (req, res) => {
     );
 });
 
+const checkIfTempBillExist = asyncHandler(async(req,res) => {
+  const userId = req.params.userId;
+  const bill = await TempPtBill.findOne({user:userId});
+  if(!bill){
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        false,
+        "user hasn't taken pt themselves"
+      )
+    )
+  }
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      true,
+      "user has taken pt themseleves , they need to choose trainer first"
+    )
+  )
+})
+
 const assignPT = asyncHandler(async (req, res) => {
   const userId = req.params.member_id;
   const trainerId = req.params.trainer_id;
@@ -1164,6 +1190,73 @@ const changePFP = asyncHandler(async(req,res) => {
   )
 })
 
+const changeTrainer = asyncHandler(async(req,res) => {
+  const userId = req.params.member_id;
+  const trainerId = req.params.trainer_id;
+  const adminId = req.user._id;
+  // later can be required for superadmin access checking
+  if(!adminId) throw new ApiError(401,"unauthorized access.");
+  if(!userId) throw new ApiError(400,"user id must required in order to change trainer!");
+  const ptbill = await Ptbill.findOne({user:userId});
+  if(!ptbill) throw new ApiError(400,"pt plan has not been purchased yet");
+  if(ptbill?.subscription[ptbill?.subscription?.length - 1]?.status === "expired") throw new ApiError(400,"pt plan has been expired , kindly renew before proceeding.");
+  if(!ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer) throw new ApiError(400,"no trainer been assigend yet");
+  if(!trainerId) throw new ApiError(400,"kindly consider choosing a trianer!");
+
+  const existingTrainer = await Trainer.findById(ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer);
+  // we are not checkint this thing , cuz in senario if a trianer is deleted , then this could help us , not getting error as well as at the same time we can change the trianer safely
+  // if(!existingTrainer) throw new ApiError(400,"trianer not found for current personal trainer.");
+  try {
+    if(existingTrainer){
+      await Trainer.findByIdAndUpdate(ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer,
+        {
+          $pull:{
+            students:{
+              student: userId
+            }
+          }
+        }
+      )
+    }
+  } catch (error) {
+    console.log("error in change trainer controller : ",error);
+  }
+  const lastIndex = ptbill.subscription.length - 1;
+  const final = await Ptbill.findByIdAndUpdate(ptbill._id,
+    {
+      $set:{
+        [`subscription.${lastIndex}.trainer`]:trainerId,
+        [`subscription.${lastIndex}.updatedBy`]:adminId
+      }
+    },
+    {
+      new:true
+    }
+  )
+  if(!final) throw new ApiError(500,"internal server error, contact administrator.");
+
+  const trainerStudentAdd = await Trainer.findByIdAndUpdate(trainerId,
+    {
+      $addToSet: {
+        students: { student: userId },
+      },
+    },
+    {
+      new: true,
+    }
+  )
+
+  if(!trainerStudentAdd) throw new ApiError(500,"internal server error , trainer has been changed, failed to add studnet to trianer.")
+
+  return res
+  .status(200)
+  .json(new ApiResponse(
+    200,
+    {},
+    "trainer have been changed successfully."
+  ))
+});
+
 
 export {
   registerUser,
@@ -1178,5 +1271,7 @@ export {
   renewalPtSub,
   fetchProfile,
   checkUser,
-  changePFP
+  changePFP,
+  changeTrainer,
+  checkIfTempBillExist
 };
