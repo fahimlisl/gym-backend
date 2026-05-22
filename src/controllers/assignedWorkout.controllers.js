@@ -66,6 +66,9 @@ const assignWorkoutToUser = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to assign workout to user.");
   }
 
+  user.workout = assignedWorkout._id;
+  await user.save({valiudateBeforeSave: false});
+
   await assignedWorkout.populate('user', 'username email');
   await assignedWorkout.populate('template', 'name description');
 
@@ -103,6 +106,12 @@ const updateExerciseInAssignedWorkout = asyncHandler(async (req, res) => {
   const workout = await AssignedWorkout.findById(workoutId);
   if (!workout) {
     throw new ApiError(404, "Assigned workout not found.");
+  }
+  const user = await User.findById(workout.user);
+  if (!user.workout) {
+    user.workout = workout._id;
+    await user.save({ validateBeforeSave: false });
+    console.log('if user is not linked to workout, link it');
   }
 
   // Find week
