@@ -116,12 +116,12 @@ const calculateStats = async (startDate = null) => {
     {
       $group: {
         _id: null,
-        totalAmount: {
+        totalCreditAmount: {
           $sum: {
             $cond: [
               { $in: ["$source", CREDIT_SOURCES] },
               "$amount",
-              { $multiply: ["$amount", -1] }
+              0
             ]
           }
         },
@@ -131,7 +131,7 @@ const calculateStats = async (startDate = null) => {
   ]);
 
   return {
-    totalAmount: result[0]?.totalAmount || 0,
+    totalAmount: result[0]?.totalCreditAmount || 0,
     totalTransactions: result[0]?.totalTransactions || 0,
   };
 };

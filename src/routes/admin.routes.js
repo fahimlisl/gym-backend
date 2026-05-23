@@ -27,6 +27,7 @@ import {
 } from "../controllers/trainer.controllers.js";
 import {
   assignPT,
+  chagneDate,
   changeTrainer,
   checkIfTempBillExist,
   destroyUser,
@@ -150,6 +151,7 @@ router.route("/renewalSubscription/:id/:planId").patch(verifyJWT, isAdmin, renew
 router.route("/edit-user/:id").patch(upload.single("avatar"), verifyJWT, isAdmin, editUser);
 router.route("/fetchAllUser").get(verifyJWT, isAdmin, fetchAllUser);
 router.route("/fetchParticularUser/:id").get(verifyJWT, isAdmin, fetchParticularUser);
+router.route("/subscription/change/date/:userId").patch(verifyJWT,isAdmin,isSuperAdmin,chagneDate);
 
 // personal training
 router.route("/personal-training/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, assignPT);

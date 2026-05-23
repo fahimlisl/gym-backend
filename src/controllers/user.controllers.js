@@ -1257,6 +1257,46 @@ const changeTrainer = asyncHandler(async(req,res) => {
   ))
 });
 
+// we don't need to change the createdAt date for susbcription main model for the first time user
+// because we are only evaluating the vlalues using our transacsction cretedAt date
+// need to change --- the start and end date of latest susbcription and createdAt date of transaction regarding that
+const chagneDate = asyncHandler(async(req,res) => {
+  const userId = req.params.userId;
+  const subscription = await Subscription.findOne({user:userId});
+
+  const parseDate = (str) => {
+    const [day, month, year] = str.split("-");
+    return new Date(`${year}-${month}-${day}`);
+  };
+  const latest = subscription?.subscription[subscription?.subscription?.length - 1];
+  if(!subscription) throw new ApiError(401,"no subscription found regarding this particular user");
+  const { startDate , endDate } = req.body;
+  console.log(startDate,endDate);
+  if(!startDate && !endDate) throw new ApiError(400,"startdate and end date must required");
+  // date calculation logic and parsing logic should be proper , will be fiding out what to do
+  latest.startDate = parseDate(startDate);
+  latest.endDate = parseDate(endDate);
+  subscription.markModified('subscription');
+  await subscription.save({validateBeforeSave:false});
+  const transaction = await Transaction.findOne({subReferenceId: latest?._id});
+  if(!transaction) throw new ApiError(400,"transaction record not found regarding this subscription");
+const uptrans = await Transaction.collection.updateOne(
+  { _id: transaction._id },
+  { $set: { createdAt: parseDate(startDate) } }
+);
+if(!uptrans) throw new ApiError(400,"failed to update transaction date");
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(
+      200,
+      {},
+      "date have been updated successfully"
+    )
+  )
+})
+
 
 export {
   registerUser,
@@ -1273,5 +1313,6 @@ export {
   checkUser,
   changePFP,
   changeTrainer,
-  checkIfTempBillExist
+  checkIfTempBillExist,
+  chagneDate
 };
