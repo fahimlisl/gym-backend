@@ -35,6 +35,7 @@ import {
   fetchAllUser,
   fetchParticularUser,
   registerUser,
+  removePt,
   renewalPtSub,
   renewalSubscription,
 } from "../controllers/user.controllers.js";
@@ -158,6 +159,7 @@ router.route("/personal-training/:member_id/:trainer_id/:plan_id").post(verifyJW
 router.route("/personal-training-renewal/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, renewalPtSub);
 router.route("/personal-training/change/trainer/:member_id/:trainer_id").patch(verifyJWT,isAdmin,changeTrainer)
 router.route("/personal-training/check/self/pt/:userId").get(verifyJWT,isAdmin,checkIfTempBillExist)
+router.route("/personal-training/remove/:userId").patch(verifyJWT,isAdmin,removePt)
 
 // supplement
 router.route("/add-supplement").post(upload.array("images", 6), verifyJWT, isAdmin, addSupplement);

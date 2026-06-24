@@ -779,7 +779,7 @@ const assignPT = asyncHandler(async (req, res) => {
   const plan = await Plan.findById(planId)
 
   const { coupon } = req.body;
-  const c = await Coupon.findOne({code:coupon});
+  const c = coupon ? await Coupon.findOne({ code: coupon }) : null;
     if (coupon) {
       if (!c) {
         throw new ApiError(
@@ -794,7 +794,7 @@ const assignPT = asyncHandler(async (req, res) => {
       if (c.usageLimit && c.usedCount >= c.usageLimit) {
         throw new ApiError(400, "Coupon's usage limit has been completely consumed! Wait for further offers.");
       }
-      if (c.minCartAmount > plan.finalPrice)
+      if (c.minCartAmount > plan?.finalPrice)
         throw new ApiError(
           400,
           "coupon is not applicable, minimum Cart amount must exceed!"
@@ -840,35 +840,75 @@ const assignPT = asyncHandler(async (req, res) => {
   } else {
     final = plan.finalPrice;
   }
+  let pt;
 
-
-  const pt = await Ptbill.create({
-    user: userId,
-    subscription: [
-      {
-        plan:plan.duration,
-        basePrice:plan.finalPrice,
-        finalPrice:final,
-        status: "active",
-        startDate: start,
-        endDate: endDate,
-        trainer: trainerId,
-        discount: {
-      amount: discount || 0,
-      code: c?.code || "",
-      typeOfDiscount: c?.typeOfCoupon || "none",
-      value: c?.value || 0,
-    },
-        paymentMethod: paymentMethod || "cash",
-        ref: ref || ""
+  const doesPtExistsWithUser = await Ptbill.findOne({user:userId})
+  if(doesPtExistsWithUser){
+    pt = await Ptbill.findByIdAndUpdate(
+    doesPtExistsWithUser._id,
+    {
+      $push: {
+        subscription: [
+          {
+            plan:plan.duration,
+            basePrice:plan.finalPrice,
+            finalPrice:final,
+            status: "active",
+            startDate: start,
+            endDate: endDate,
+            trainer: trainerId,
+            discount: {
+              amount: discount || 0,
+              code: c?.code || "",
+              typeOfDiscount: c?.typeOfCoupon || "none",
+              value: c?.value || 0,
+            },
+            paymentMethod: paymentMethod || "cash",
+            ref: ref || ""
+        },
+      ],
       },
-    ],
-  });
+    },
+    {
+      new: true,
+    }
+  );
+
   if (!pt) {
     throw new ApiError(
       500,
-      "internal server error, wasn't able to careate pt docuemtn"
+      "internal server error, wasn't able to push latest pt details in pre exisiting document"
     );
+  }
+  }else{
+    pt = await Ptbill.create({
+      user: userId,
+      subscription: [
+        {
+          plan:plan.duration,
+          basePrice:plan.finalPrice,
+          finalPrice:final,
+          status: "active",
+          startDate: start,
+          endDate: endDate,
+          trainer: trainerId,
+          discount: {
+        amount: discount || 0,
+        code: c?.code || "",
+        typeOfDiscount: c?.typeOfCoupon || "none",
+        value: c?.value || 0,
+      },
+          paymentMethod: paymentMethod || "cash",
+          ref: ref || ""
+        },
+      ],
+    });
+    if (!pt) {
+      throw new ApiError(
+        500,
+        "internal server error, wasn't able to careate pt docuemtn"
+      );
+    }
   }
 
   const addM = await Trainer.findByIdAndUpdate(
@@ -1297,6 +1337,58 @@ if(!uptrans) throw new ApiError(400,"failed to update transaction date");
   )
 })
 
+const removePt = asyncHandler(async(req,res) => {
+  const userId = req.params.userId;
+  const ptbill = await Ptbill.findOne({user:userId});
+  if(!ptbill) throw new ApiError(400,"pt plan has not been purchased yet");
+  const lastIndex = ptbill.subscription.length - 1;
+  const latestStatus = ptbill?.subscription[lastIndex]?.status;
+  const trainerId = ptbill?.subscription[lastIndex]?.trainer;
+  if(latestStatus !== "expired" ){
+    throw new ApiError(400,"pt plan is not expired yet , kindly wait for the plan to be expired before removing it.");
+  }
+
+  if(trainerId){
+    const trainer = await Trainer.findById(trainerId);
+    if(trainer) {
+      const trainerUpdate = await Trainer.findByIdAndUpdate(trainerId,
+        {
+          $pull:{
+            students:{
+              student: userId
+            }
+          }
+        },
+        {new:true}
+      )
+      if(!trainerUpdate) throw new ApiError(500,"internal server error while updating trainer studnet list, contact administrator.");
+    }
+  }
+
+
+    const updateUser = await User.findByIdAndUpdate(userId,
+      {
+        $unset:{
+          personalTraning:""
+        }
+      },
+      { new: true }
+    )
+
+    if(!updateUser) throw new ApiError(500,"internal server error while updating user document, contact administrator.");
+
+    // not deleting the ptbill document because we need the record for future reference and also for generating the reports, we can only update the status to removed or something like that, will be doing that in future if needed
+    return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {},
+        "personal training has been removed successfully."
+      )
+    )
+})
+
 
 export {
   registerUser,
@@ -1314,5 +1406,6 @@ export {
   changePFP,
   changeTrainer,
   checkIfTempBillExist,
-  chagneDate
+  chagneDate,
+  removePt
 };
