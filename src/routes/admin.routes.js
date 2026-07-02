@@ -8,12 +8,14 @@ import {
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 import {
   addSupplement,
+  adminCheckoutSupplement,
   destroySupplement,
   editSupplement,
   fetchAllSupp,
   fetchAllSuppBill,
   fetchParticularSupp,
   toggleShipped,
+  validateSupplementCoupon,
 } from "../controllers/supplement.controllers.js";
 import { upload } from "../middlewares/multer.middlewares.js";
 import { isAdmin } from "../middlewares/isAdmin.middlewares.js";
@@ -286,6 +288,8 @@ router.get("/workout/:workoutId", verifyJWT, isAdmin, getSingleAssignedWorkout);
 router.delete("/workout/:workoutId/week/:weekNumber/day/:dayId/exercise/:exerciseId", verifyJWT, isAdmin, deleteExerciseFromAssignedWorkout);
 
 // supplement bills
+router.route("/checkout/supplement").post(verifyJWT, isAdmin, adminCheckoutSupplement);
+router.route("/validate-coupon/supplement").post(verifyJWT, isAdmin, validateSupplementCoupon);
 router.route("/fetch/supp/bill/all").get(verifyJWT, isAdmin, fetchAllSuppBill);
 router.route("/supp/bill/toggle/:billId").get(verifyJWT, isAdmin, toggleShipped);
 

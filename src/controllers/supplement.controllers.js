@@ -518,5 +518,151 @@ const toggleShipped = asyncHandler(async (req, res) => {
 });
 
 
-export { checkoutSupplements,addSupplement, editSupplement, destroySupplement ,checkUserSupp,toggleShipped,fetchAllSuppBill};
+const adminCheckoutSupplement = asyncHandler(async (req, res) => {
+  const { cart, paymentMethod, customerInfo, notes, couponCode } = req.body;
+
+  if (!cart || cart.length === 0) {
+    throw new ApiError(400, "Cart is empty");
+  }
+
+  if (!["upi", "cash"].includes(paymentMethod)) {
+    throw new ApiError(400, "Payment method must be either 'upi' or 'cash'");
+  }
+
+  let user = null;
+  let isGuest = true;
+
+  if (customerInfo?.phoneNumber) {
+    user = await User.findOne({ phoneNumber: customerInfo.phoneNumber });
+    isGuest = !user;
+  }
+
+  const items = [];
+  let subtotal = 0;
+
+  for (const cartItem of cart) {
+    const supplement = await Supplement.findById(cartItem._id);
+
+    if (!supplement) {
+      throw new ApiError(404, `Supplement not found: ${cartItem._id}`);
+    }
+    if (supplement.quantity < cartItem.quantity) {
+      throw new ApiError(400, `Insufficient stock for ${supplement.productName}`);
+    }
+
+    const itemSubtotal = supplement.salePrice * cartItem.quantity;
+    subtotal += itemSubtotal;
+
+    items.push({
+      productId: supplement._id,
+      productName: supplement.productName,
+      quantity: cartItem.quantity,
+      price: supplement.salePrice,
+      subtotal: itemSubtotal,
+    });
+  }
+
+  let discountPayload = {
+    amount: 0,
+    typeOfDiscount: "percentage",
+    value: 0,
+    code: undefined,
+  };
+  let discountAmount = 0;
+  let appliedCoupon = null;
+
+  if (couponCode) {
+    const coupon = await Coupon.findOne({
+      code: couponCode.toUpperCase(),
+      category: "SUPPLEMENT",
+      isActive: true,
+    });
+
+    if (!coupon) {
+      throw new ApiError(400, "Invalid or inactive coupon");
+    }
+    if (coupon.expiryDate && new Date() > new Date(coupon.expiryDate)) {
+      throw new ApiError(400, "Coupon has expired");
+    }
+    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+      throw new ApiError(400, "Coupon usage limit reached");
+    }
+    if (coupon.minCartAmount && subtotal < coupon.minCartAmount) {
+      throw new ApiError(400, `Minimum cart amount of ₹${coupon.minCartAmount} required`);
+    }
+
+    if (coupon.typeOfCoupon === "percentage") {
+      discountAmount = (subtotal * coupon.value) / 100;
+      if (coupon.maxDiscount) {
+        discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+      }
+    } else {
+      discountAmount = coupon.value;
+    }
+    discountAmount = Math.min(discountAmount, subtotal);
+
+    discountPayload = {
+      amount: discountAmount,
+      typeOfDiscount: coupon.typeOfCoupon,
+      value: coupon.value,
+      code: coupon.code,
+    };
+
+    appliedCoupon = coupon;
+  }
+
+  const total = subtotal - discountAmount;
+
+  for (const item of items) {
+    await Supplement.findByIdAndUpdate(item.productId, {
+      $inc: { quantity: -item.quantity },
+    });
+  }
+
+  if (appliedCoupon) {
+    await Coupon.findByIdAndUpdate(appliedCoupon._id, { $inc: { usedCount: 1 } });
+  }
+
+  const billData = {
+    items,
+    discount: discountPayload,
+    subtotal,
+    discountAmount,
+    total,
+    paymentMethod,
+    notes: notes || undefined,
+    status: "delivered", 
+  };
+
+  if (isGuest) {
+    billData.guestInfo = {
+      fullName: customerInfo?.fullName || "Walk-in Customer",
+      phone: customerInfo?.phoneNumber || undefined,
+      email: customerInfo?.email || undefined,
+    };
+  } else {
+    billData.userId = user._id;
+  }
+
+  const bill = await SupplementBill.create(billData);
+  if (!bill) throw new ApiError(500, "Failed to create bill");
+
+  const transaction = await Transaction.create({
+    source: "supplement",
+    referenceModel: "SupplementBill",
+    referenceId: bill._id,
+    amount: total,
+    paymentMethod,
+    status: "success",
+    ...(isGuest ? { guestInfo: billData.guestInfo } : { user: user._id }),
+  });
+
+  if (!transaction) throw new ApiError(500, "Failed to create transaction");
+
+  return res.status(201).json(
+    new ApiResponse(201, { bill, transaction }, "Sale completed successfully")
+  );
+});
+
+export { checkoutSupplements,addSupplement, editSupplement, destroySupplement ,checkUserSupp,toggleShipped,fetchAllSuppBill,adminCheckoutSupplement};
 export { fetchAllSupp, fetchParticularSupp };
