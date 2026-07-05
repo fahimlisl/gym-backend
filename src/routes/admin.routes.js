@@ -30,6 +30,7 @@ import {
 import {
   assignPT,
   chagneDate,
+  changePtBillDate,
   changeTrainer,
   checkIfTempBillExist,
   destroyUser,
@@ -155,6 +156,7 @@ router.route("/edit-user/:id").patch(upload.single("avatar"), verifyJWT, isAdmin
 router.route("/fetchAllUser").get(verifyJWT, isAdmin, fetchAllUser);
 router.route("/fetchParticularUser/:id").get(verifyJWT, isAdmin, fetchParticularUser);
 router.route("/subscription/change/date/:userId").patch(verifyJWT,isAdmin,isSuperAdmin,chagneDate);
+router.route("/ptbill/change/date/:userId").patch(verifyJWT,isAdmin,changePtBillDate)
 
 // personal training
 router.route("/personal-training/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, assignPT);
