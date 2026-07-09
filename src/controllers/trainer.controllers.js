@@ -226,15 +226,55 @@ const destroyTrainer = asyncHandler(async (req, res) => {
 });
 
 const fetchAllTrainer = asyncHandler(async (req, res) => {
-  const trainers = await Trainer.find({}).select("-password -refreshToken");
-  if (!trainers) {
+  const trainers = await Trainer.find({})
+    .select("-password -refreshToken")
+    .lean();
+
+  if (!trainers || trainers.length === 0) {
     return res
       .status(200)
       .json(new ApiResponse(200, {}, "no trainers been added yet"));
   }
+
+  const trainersWithFilteredStudents = await Promise.all(
+    trainers.map(async (trainer) => {
+      const studentIds = (trainer.students || [])
+        .map((s) => s.student?.toString())
+        .filter(Boolean);
+      const uniqueStudentIds = [...new Set(studentIds)];
+
+      const students = await User.find({
+        _id: { $in: uniqueStudentIds },
+      })
+        .populate("personalTraning")
+        .lean();
+
+      const filteredStudents = students.filter((student) => {
+        const ptSubs = student?.personalTraning?.subscription;
+        const latestPT =
+          Array.isArray(ptSubs) && ptSubs.length > 0
+            ? ptSubs[ptSubs.length - 1]
+            : null;
+
+        return latestPT?.trainer?.toString() === trainer._id.toString();
+      });
+
+      return {
+        ...trainer,
+        students: filteredStudents,
+      };
+    })
+  );
+
   return res
     .status(200)
-    .json(new ApiResponse(200, trainers, "trainers been successfully fetched"));
+    .json(
+      new ApiResponse(
+        200,
+        trainersWithFilteredStudents,
+        "trainers been successfully fetched"
+      )
+    );
 });
 
 const fetchParticularTrainer = asyncHandler(async (req, res) => {
@@ -258,11 +298,19 @@ const fetchAssignedStudents = asyncHandler(async (req, res) => {
   }
 
   const studentIds = trainer.students.map((s) => s.student.toString());
-
   const uniqueStudentIds = [...new Set(studentIds)];
 
   const students = await User.find({
     _id: { $in: uniqueStudentIds },
+  }).populate("personalTraning");
+
+  const filteredStudents = students.filter((student) => {
+    const ptSubs = student?.personalTraning?.subscription;
+    const latestPT = Array.isArray(ptSubs) && ptSubs.length > 0
+      ? ptSubs[ptSubs.length - 1]
+      : null;
+
+    return latestPT?.trainer?.toString() === trainerId.toString();
   });
 
   return res
@@ -270,7 +318,7 @@ const fetchAssignedStudents = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        students,
+        filteredStudents,
         "Successfully fetched unique assigned members"
       )
     );
