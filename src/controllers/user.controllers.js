@@ -18,6 +18,7 @@ import { Plan } from "../models/plans.models.js";
 import getNextSequence from "../utils/getNextSequence.js"
 import { TrainerCoupon } from "../models/trainercoupon.models.js"
 import { TempPtBill } from "../models/ptbill.temp.models.js";
+import { sendWhatsAppMessage } from "../service/sendWp.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const {
@@ -294,6 +295,41 @@ const registerUser = asyncHandler(async (req, res) => {
   console.error("Failed to trigger n8n webhook:", error);
   // Don't throw - webhook failure shouldn't break registration
 }
+
+
+  try {
+
+    const planName = plan.duration; 
+    const start = startDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const end = endDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const welcomeMsg =
+      `🎉 Welcome to the Alpha Gym Family, ${username}!\n\n` +
+      `Your gym membership has been activated successfully. Here are your details:\n\n` +
+      `📋 Plan : ${planName.toUpperCase()}\n` +
+      `📅 Start : ${start}\n` +
+      `📅 Valid Till : ${end}\n` +
+      `💰 Total Paid : ₹${totalAmount}\n` +
+      `Your Login credentials are Phone Number : ${phoneNumber} or Email : ${email} and Password : *${defaultPassword}* `+
+      `We recommend you changing your password after first login`+
+      (coupon ? `🏷️ Coupon Used : ${coupon} (₹${subscriptionDiscountAmount} off)\n` : "") +
+      `\nGet ready to crush your fitness goals! 💪😊\n` +
+      `If you have any questions, feel free to reach out.\n\n` +
+      `– THE ALPHA (A) FITNESS & EDUCATION 💚`;
+
+    await sendWhatsAppMessage(phoneNumber, welcomeMsg);
+    console.log(`Welcome WhatsApp sent to ${phoneNumber}`);
+  } catch (wpError) {
+    console.error("Failed to send welcome WhatsApp:", wpError);
+  }
 
 
 
@@ -607,7 +643,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
 
   await User.findByIdAndUpdate(
     userId,
-    { $set: { isActive: true } },
+    { $set: { isActive: true,reminderSentAt:null } },
     { new: true }
   );
 
@@ -654,6 +690,34 @@ const renewalSubscription = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error("Failed to trigger renewal email:", error.message);
   }
+
+  // after the n8n webhook call (around line ~130 in your renewalSubscription)
+  try {
+    const start = startDate || new Date();
+    const startStr = new Date(start).toLocaleDateString("en-IN", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+    const endStr = endDate.toLocaleDateString("en-IN", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+
+    const msg =
+      `🎉 Membership Renewed, ${user.username}!\n\n` +
+      `Your gym membership has been successfully renewed.\n\n` +
+      `📋 Plan : ${plan.duration.toUpperCase()}\n` +
+      `📅 Start : ${startStr}\n` +
+      `📅 Valid Till : ${endStr}\n` +
+      `💰 Amount Paid : ₹${final}\n` +
+      (coupon ? `🏷️ Coupon Used : ${coupon} (₹${subscriptionDiscountAmount} off)\n` : "") +
+      `\nThank you for continuing your fitness journey with us! 💪😊\n\n` +
+      `– THE ALPHA (A) FITNESS & EDUCATION 💚`;
+
+    await sendWhatsAppMessage(user.phoneNumber, msg);
+    console.log(`Renewal WhatsApp sent to ${user.phoneNumber}`);
+  } catch (wpErr) {
+    console.error("Failed to send renewal WhatsApp:", wpErr);
+  }
+
 
   return res
     .status(200)
@@ -991,6 +1055,33 @@ const assignPT = asyncHandler(async (req, res) => {
     console.error('Failed to trigger PT assignment email:', error.message);
   }
 
+  try {
+    const trainer = await Trainer.findById(trainerId);
+    const startStr = start.toLocaleDateString("en-IN", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+    const endStr = endDate.toLocaleDateString("en-IN", {
+      day: "numeric", month: "long", year: "numeric",
+    });
+
+    const msg =
+      `🏋️ Personal Training Activated, ${user.username}!\n\n` +
+      `Your personal training subscription has been activated.\n\n` +
+      `📋 Plan : ${plan.duration.toUpperCase()}\n` +
+      `👤 Trainer : ${trainer?.fullName || "Your Trainer"}\n` +
+      `📅 Start : ${startStr}\n` +
+      `📅 Valid Till : ${endStr}\n` +
+      `💰 Amount Paid : ₹${final}\n` +
+      (coupon ? `🏷️ Coupon Used : ${coupon} (₹${discount} off)\n` : "") +
+      `\nGet ready for personalised workouts and faster results! 🔥\n\n` +
+      `– THE ALPHA (A) FITNESS & EDUCATION 💚`;
+
+    await sendWhatsAppMessage(user.phoneNumber, msg);
+    console.log(`PT assignment WhatsApp sent to ${user.phoneNumber}`);
+  } catch (wpErr) {
+    console.error("Failed to send PT assignment WhatsApp:", wpErr);
+  }
+
   return res
     .status(200)
     .json(new ApiResponse(200, pt, "successfully added personal traning"));
@@ -1148,7 +1239,7 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     });
     console.log(`Coupon usage incremented from normal admin route`);
   }
-
+  await User.findByIdAndUpdate(userId, { reminderSentAt: null });
   
   try {
     const trainer = await Trainer.findById(trainerId);
@@ -1168,6 +1259,34 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     });
   } catch (error) {
     console.error('Failed to trigger PT renewal email:', error.message);
+  }
+
+
+  try {
+  const trainer = await Trainer.findById(trainerId);
+  const startStr = start.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+  const endStr = endDate.toLocaleDateString("en-IN", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+
+  const msg =
+    `🔄 PT Renewal Confirmed, ${user.username}!\n\n` +
+    `Your personal training subscription has been renewed.\n\n` +
+    `📋 Plan : ${plan.duration.toUpperCase()}\n` +
+    `👤 Trainer : ${trainer?.fullName || "Your Trainer"}\n` +
+    `📅 Start : ${startStr}\n` +
+    `📅 Valid Till : ${endStr}\n` +
+    `💰 Amount Paid : ₹${final}\n` +
+    (coupon ? `🏷️ Coupon Used : ${coupon} (₹${discount} off)\n` : "") +
+    `\nKeep pushing your limits! 💪🏆\n\n` +
+    `– THE ALPHA (A) FITNESS & EDUCATION 💚`;
+
+  await sendWhatsAppMessage(user.phoneNumber, msg);
+  console.log(`PT renewal WhatsApp sent to ${user.phoneNumber}`);
+  } catch (wpErr) {
+    console.error("Failed to send PT renewal WhatsApp:", wpErr);
   }
 
 

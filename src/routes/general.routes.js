@@ -7,6 +7,7 @@ import { fetchOffer } from "../controllers/offer.controllers.js";
 import { markAttendanceByQR } from "../controllers/attendence.controllers.js";
 import { checkoutTrainer, markTrainerAttendanceByQR } from "../controllers/trainerAttendance.controllers.js";
 import { fetchParticularTrainerCoupon } from "../controllers/trainercoupon.controllers.js";
+import { sendWpMessage } from "../service/sendWp.js";
 
 const router = Router();
 
@@ -35,5 +36,8 @@ router.route("/attendance/trainer/checkout").post(checkoutTrainer)
 router.post("/supplements/validate-coupon", validateSupplementCoupon);
 router.post("/supplements/checkout", checkoutSupplements);
 router.get("/user/check-phone/:phoneNumber",checkUserSupp)
+
+// sending whtsapp
+router.route("/api/send-whatsapp").post(sendWpMessage)
 
 export default router;

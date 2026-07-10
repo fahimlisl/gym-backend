@@ -138,6 +138,7 @@ import {
   fetchParticularTrainerCoupon,
   toggleTrainerCouponExpire,
 } from "../controllers/trainercoupon.controllers.js";
+import { sendWpMessage } from "../service/sendWp.js";
 
 const router = Router();
 
@@ -306,5 +307,8 @@ router.route("/diet/check/:id").get(verifyJWT, isAdmin, checkIfDietExists);
 router.route("/diet/check/status/:id").get(verifyJWT, isAdmin, approveCheck);
 
 router.route("/get/me").get(verifyJWT, isAdmin,getAdminProfile)
+
+// send wp messages
+router.route("/api/send-whatsapp").post(verifyJWT,isAdmin,sendWpMessage)
 
 export default router;

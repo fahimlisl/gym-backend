@@ -7,6 +7,8 @@ import "./cron/couponExpire.cron.js";
 import "./cron/subscriptionExpire.cron.js"
 import "./cron/ptExpiry.cron.js"
 import "./cron/resetTrainerBonus.cron.js"
+import "./cron/dailyReminder.cron.js";
+
 
 dotenv.config({
     path:"./.env"

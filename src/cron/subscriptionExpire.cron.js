@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { Subscription } from "../models/subscription.models.js";
 import { User } from "../models/user.models.js";
 import axios from "axios";
+import { sendWhatsAppMessage } from "../service/sendWp.js";
 
 console.log("subscription expiry cron loaded");
 
@@ -89,6 +90,27 @@ const expireSubscriptions = async () => {
           emailsFailed++;
           console.error(`[CRON] ❌ Failed to send email to ${user.email}:`, error.message);
         }
+
+        if (user.phoneNumber) {
+          try {
+            const plan = expiredEntry.plan || "membership";
+            const expiryDate = new Date(expiredEntry.endDate).toLocaleDateString("en-IN", {
+              day: "numeric", month: "long", year: "numeric",
+            });
+
+            const msg =
+              `🔔 Dear ${user.username},\n\n` +
+              `Your gym membership (${plan} plan) has expired on ${expiryDate}. 💔\n\n` +
+              `We’d love to see you back! Renew today to continue accessing.\n` +
+              `Visit the front desk or call us to renew your membership and keep your fitness journey going strong. 💪😊\n\n` +
+              `– THE ALPHA (A) FITNESS & EDUCATION 💚`;
+
+            await sendWhatsAppMessage(user.phoneNumber, msg);
+            console.log(`[CRON] 📲 WhatsApp expiry sent to ${user.phoneNumber}`);
+          } catch (wpError) {
+            console.error(`[CRON] ❌ Failed to send WhatsApp to ${user.phoneNumber}:`, wpError.message);
+          }
+        }
       }
     }
 
@@ -137,113 +159,4 @@ export const subscriptionExpiryJob = () => {
   console.log("✅ Subscription expiry cron scheduled (Daily at 12:20 AM IST)");
 };
 
-
-subscriptionExpiryJob()
-
-
-
-// manula test-code
-
-// import cron from "node-cron";
-// import { Subscription } from "../models/subscription.models.js";
-// import axios from "axios";
-
-// console.log("✅ Subscription expiry cron loaded");
-
-// maunal testing
-// export const testSubscriptionExpiry = async () => {
-//   console.log("\n🧪 [TEST] Running manual subscription expiry test...");
-  
-//   try {
-//     const now = new Date();
-//     console.log("🕐 Current time:", now.toISOString());
-
-//     // Find expired subscriptions
-//     const expiredSubs = await Subscription.find({
-//       subscription: {
-//         $elemMatch: {
-//           endDate: { $lt: now },
-//           status: "active",
-//         },
-//       },
-//     }).populate('user', 'username email phoneNumber');
-
-//     console.log(`\n📊 Found ${expiredSubs.length} subscription(s) with expired entries`);
-
-//     for (const sub of expiredSubs) {
-//       const expiredEntry = sub.subscription.find(
-//         s => s.endDate < now && s.status === "active"
-//       );
-      
-//       if (expiredEntry) {
-//         console.log(`\n👤 User: ${sub.user?.username}`);
-//         console.log(`📅 Plan: ${expiredEntry.plan}`);
-//         console.log(`⏰ Expired: ${expiredEntry.endDate}`);
-//       }
-//     }
-
-//     const result = await Subscription.updateMany(
-//       {
-//         subscription: {
-//           $elemMatch: {
-//             endDate: { $lt: now },
-//             status: "active",
-//           },
-//         },
-//       },
-//       {
-//         $set: {
-//           "subscription.$[elem].status": "expired",
-//         },
-//       },
-//       {
-//         arrayFilters: [
-//           {
-//             "elem.endDate": { $lt: now },
-//             "elem.status": "active",
-//           },
-//         ],
-//       }
-//     );
-
-//     console.log(`\n✅ Expired ${result.modifiedCount} subscription(s)!`);
-
-//     // 📧 Send expiry emails
-//     for (const sub of expiredSubs) {
-//       const user = sub.user;
-//       const expiredEntry = sub.subscription.find(
-//         s => s.endDate < now && s.status === "active"
-//       );
-
-//       if (user && user.email && expiredEntry) {
-//         try {
-//           await axios.post(process.env.N8N_WEBHOOK_URL, {
-//             eventType: "subscription_expired",
-//             memberName: user.username,
-//             email: user.email,
-//             phoneNumber: user.phoneNumber,
-//             plan: expiredEntry.plan,
-//             expiredDate: expiredEntry.endDate.toISOString(),
-//             expiryNoticeDate: new Date().toISOString()
-//           });
-//           console.log(`📧 Expiry email sent to ${user.email}`);
-//         } catch (error) {
-//           console.error(`❌ Failed to send email to ${user.email}:`, error.message);
-//         }
-//       }
-//     }
-
-//     return { success: true, expired: result.modifiedCount };
-
-//   } catch (error) {
-//     console.error("\n❌ Test failed:", error);
-//     return { success: false, error: error.message };
-//   }
-// };
-
-// export const subscriptionExpiryJob = () => {
-//   cron.schedule("20 0 * * *", async () => {
-//     console.log("[CRON] Running subscription expiry check...");
-//     await testSubscriptionExpiry();
-//   });
-// };
+subscriptionExpiryJob();

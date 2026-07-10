@@ -10,6 +10,7 @@ import generalRouter from "./routes/general.routes.js"
 import trainerRouter from "./routes/trainer.routes.js"
 import cafeAdminRouter from "./routes/cafeAdmin.routes.js"
 import paymentRoutes from "./routes/payment.routes.js"
+import whatsAppRoutes from "./routes/whatsapp.routes.js"
 
 
 const app = express();
@@ -48,6 +49,7 @@ app.use("/api/v1/general",generalRouter)
 app.use("/api/v1/trainer",trainerRouter)
 app.use("/api/v1/cafe/admin",cafeAdminRouter)
 app.use("/api/v1/payment",paymentRoutes)
+app.use("/api/v1/whatsapp",whatsAppRoutes)
 
 
 export default app;

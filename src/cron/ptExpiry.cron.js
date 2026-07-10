@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { Ptbill } from "../models/ptbill.models.js";
 import { Trainer } from "../models/trainer.models.js";
 import axios from "axios";
+import { sendWhatsAppMessage } from "../service/sendWp.js";
 
 console.log("PT expiry cron loaded");
 
@@ -9,7 +10,6 @@ const expirePTSubscriptions = async () => {
   const now = new Date();
   
   try {
-
     const expiredPTs = await Ptbill.find({
       subscription: {
         $elemMatch: {
@@ -65,7 +65,6 @@ const expirePTSubscriptions = async () => {
 
       if (expiredEntry && user.email) {
         try {
-
           const trainer = await Trainer.findById(expiredEntry.trainer);
           
           await axios.post(process.env.N8N_WEBHOOK_URL, {
@@ -83,6 +82,31 @@ const expirePTSubscriptions = async () => {
         } catch (error) {
           emailsFailed++;
           console.error(`[CRON-PT] ❌ Failed to send email to ${user.email}:`, error.message);
+        }
+
+        if (user.phoneNumber) {
+          try {
+            const trainer = await Trainer.findById(expiredEntry.trainer);
+            const plan = expiredEntry.plan || "personal training";
+            const expiryDate = new Date(expiredEntry.endDate).toLocaleDateString("en-IN", {
+              day: "numeric", month: "long", year: "numeric",
+            });
+
+            const msg =
+              `🔔 Dear ${user.username},\n\n` +
+              `Your personal training subscription (${plan} plan) has expired on ${expiryDate}. ⏰\n\n` +
+              `Don’t let your hard work stop! Renew your PT package to keep receiving:\n` +
+              `🔥 Customised workout plans\n` +
+              `🔥 One‑on‑one attention from ${trainer?.fullName || "your trainer"}\n` +
+              `🔥 Faster progress toward your goals\n\n` +
+              `Get in touch with us to renew and continue smashing your goals! 🏆\n\n` +
+              `– THE ALPHA (A) FITNESS & EDUCATION 💚`;
+
+            await sendWhatsAppMessage(user.phoneNumber, msg);
+            console.log(`[CRON-PT] 📲 WhatsApp expiry sent to ${user.phoneNumber}`);
+          } catch (wpError) {
+            console.error(`[CRON-PT] ❌ Failed to send WhatsApp to ${user.phoneNumber}:`, wpError.message);
+          }
         }
       }
     }
@@ -120,7 +144,6 @@ export const testPTExpiry = async () => {
 };
 
 
-// runs daily at 12:10 AM
 
 export const ptExpiryJob = () => {
   cron.schedule("10 0 * * *", async () => {
