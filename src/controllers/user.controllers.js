@@ -1451,13 +1451,15 @@ const chagneDate = asyncHandler(async(req,res) => {
   latest.endDate = parseDate(endDate);
   subscription.markModified('subscription');
   await subscription.save({validateBeforeSave:false});
-  const transaction = await Transaction.findOne({subReferenceId: latest?._id});
-  if(!transaction) throw new ApiError(400,"transaction record not found regarding this subscription");
-const uptrans = await Transaction.collection.updateOne(
-  { _id: transaction._id },
-  { $set: { createdAt: parseDate(startDate) } }
-);
-if(!uptrans) throw new ApiError(400,"failed to update transaction date");
+
+// to change transaction date
+//   const transaction = await Transaction.findOne({subReferenceId: latest?._id});
+//   if(!transaction) throw new ApiError(400,"transaction record not found regarding this subscription");
+// const uptrans = await Transaction.collection.updateOne(
+//   { _id: transaction._id },
+//   { $set: { createdAt: parseDate(startDate) } }
+// );
+// if(!uptrans) throw new ApiError(400,"failed to update transaction date");
 
   return res
   .status(200)
@@ -1491,14 +1493,14 @@ const changePtBillDate = asyncHandler(async (req, res) => {
   ptBill.markModified('subscription');
   await ptBill.save({ validateBeforeSave: false });
 
-  const transaction = await Transaction.findOne({ subReferenceId: latest?._id });
-  if (!transaction) throw new ApiError(400, "transaction record not found regarding this PT bill");
-
-  const uptrans = await Transaction.collection.updateOne(
-    { _id: transaction._id },
-    { $set: { createdAt: parseDate(startDate) } }
-  );
-  if (!uptrans) throw new ApiError(400, "failed to update transaction date");
+  // to change transaction date
+  // const transaction = await Transaction.findOne({ subReferenceId: latest?._id });
+  // if (!transaction) throw new ApiError(400, "transaction record not found regarding this PT bill");
+  // const uptrans = await Transaction.collection.updateOne(
+  //   { _id: transaction._id },
+  //   { $set: { createdAt: parseDate(startDate) } }
+  // );
+  // if (!uptrans) throw new ApiError(400, "failed to update transaction date");
 
   return res
     .status(200)
