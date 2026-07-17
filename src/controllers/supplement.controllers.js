@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { Supplement } from "../models/supplement.models.js";
 import { deleteFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
-import { SupplementBill } from "../models/supplementBill.models.js";
+import { SupplementBill } from "../models/supplementbill.models.js";
 import { User } from "../models/user.models.js";
 import { Coupon } from "../models/coupon.models.js";
 import {Transaction} from "../models/transaction.models.js"
@@ -519,7 +519,7 @@ const toggleShipped = asyncHandler(async (req, res) => {
 
 
 const adminCheckoutSupplement = asyncHandler(async (req, res) => {
-  const { cart, paymentMethod, customerInfo, notes, couponCode } = req.body;
+  const { cart, paymentMethod, customerInfo, notes, couponCode, manualDiscount } = req.body;
 
   if (!cart || cart.length === 0) {
     throw new ApiError(400, "Cart is empty");
@@ -527,6 +527,10 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
 
   if (!["upi", "cash"].includes(paymentMethod)) {
     throw new ApiError(400, "Payment method must be either 'upi' or 'cash'");
+  }
+
+  if (couponCode && manualDiscount?.value) {
+    throw new ApiError(400, "Use either a coupon or a manual discount, not both");
   }
 
   let user = null;
@@ -564,7 +568,7 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
 
   let discountPayload = {
     amount: 0,
-    typeOfDiscount: "percentage",
+    typeOfDiscount: undefined,
     value: 0,
     code: undefined,
   };
@@ -609,19 +613,32 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
     };
 
     appliedCoupon = coupon;
+  } else if (manualDiscount?.value) {
+    const { type, value } = manualDiscount;
+
+    if (!["percentage", "flat"].includes(type)) {
+      throw new ApiError(400, "manualDiscount.type must be 'percentage' or 'flat'");
+    }
+    if (Number(value) < 0) {
+      throw new ApiError(400, "manualDiscount.value cannot be negative");
+    }
+
+    if (type === "percentage") {
+      discountAmount = (subtotal * Number(value)) / 100;
+    } else {
+      discountAmount = Number(value);
+    }
+    discountAmount = Math.min(discountAmount, subtotal);
+
+    discountPayload = {
+      amount: discountAmount,
+      typeOfDiscount: type,
+      value: Number(value),
+      code: undefined,
+    };
   }
 
   const total = subtotal - discountAmount;
-
-  for (const item of items) {
-    await Supplement.findByIdAndUpdate(item.productId, {
-      $inc: { quantity: -item.quantity },
-    });
-  }
-
-  if (appliedCoupon) {
-    await Coupon.findByIdAndUpdate(appliedCoupon._id, { $inc: { usedCount: 1 } });
-  }
 
   const billData = {
     items,
@@ -657,7 +674,20 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
     ...(isGuest ? { guestInfo: billData.guestInfo } : { user: user._id }),
   });
 
-  if (!transaction) throw new ApiError(500, "Failed to create transaction");
+  if (!transaction) {
+    await SupplementBill.findByIdAndDelete(bill._id);
+    throw new ApiError(500, "Failed to create transaction");
+  }
+
+  for (const item of items) {
+    await Supplement.findByIdAndUpdate(item.productId, {
+      $inc: { quantity: -item.quantity },
+    });
+  }
+
+  if (appliedCoupon) {
+    await Coupon.findByIdAndUpdate(appliedCoupon._id, { $inc: { usedCount: 1 } });
+  }
 
   return res.status(201).json(
     new ApiResponse(201, { bill, transaction }, "Sale completed successfully")
