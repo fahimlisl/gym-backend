@@ -10,6 +10,7 @@ import {
 } from "../utils/cloudinary.js";
 import { User } from "../models/user.models.js";
 import axios from "axios";
+import {SupplementBill} from "../models/supplementbill.models.js"
 
 const registerTrainer = asyncHandler(async (req, res) => {
   const { fullName, email, phoneNumber, experience, salary } =
@@ -324,6 +325,26 @@ const fetchAssignedStudents = asyncHandler(async (req, res) => {
     );
 });
 
+const fetchSponsorOfTrainers = asyncHandler(async (req, res) => {
+  const trainerId = req.params.trainerId;
+  
+  if (!trainerId) {
+    throw new ApiError(400, "Trainer ID is required");
+  }
+
+  const sponsors = await SupplementBill.find({
+    "trainerInfo.id": trainerId,
+    isSponsor: true // Only fetch sponsor bills
+  }).sort({ createdAt: -1 }); // Sort by newest first
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      sponsors,
+      "Successfully fetched all sponsors for this trainer"
+    )
+  );
+});
 
 export { logOutTrainer, loginTrainier, registerTrainer };
 export {
@@ -332,4 +353,5 @@ export {
   fetchAllTrainer,
   fetchParticularTrainer,
   fetchAssignedStudents,
+  fetchSponsorOfTrainers
 };

@@ -116,6 +116,18 @@ const supplementBillSchema = new mongoose.Schema(
     },
 
     notes: String,
+
+    isSponsor:{
+      type:Boolean,
+      required:true,
+      default:false
+    },
+
+    trainerInfo:{
+      id: {type: mongoose.Schema.Types.ObjectId, ref:"Trainer"},
+      name:{type: String},
+      phone:{type: String}
+    }
   },
   { timestamps: true }
 );

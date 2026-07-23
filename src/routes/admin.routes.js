@@ -25,6 +25,7 @@ import {
   editTrainer,
   fetchAllTrainer,
   fetchParticularTrainer,
+  fetchSponsorOfTrainers,
   registerTrainer,
 } from "../controllers/trainer.controllers.js";
 import {
@@ -179,6 +180,7 @@ router.route("/destroy-trainer/:id").delete(verifyJWT, isAdmin, destroyTrainer);
 router.route("/edit-trainer/:id").patch(verifyJWT, isAdmin, editTrainer);
 router.route("/fetchAllTrainer").get(verifyJWT, isAdmin, fetchAllTrainer);
 router.route("/fetchParticularTrainer/:id").get(verifyJWT, isAdmin, fetchParticularTrainer);
+router.route("/fetchSponsors/:trainerId").get(verifyJWT,isAdmin,fetchSponsorOfTrainers)
 
 // plans
 router.route("/plan/add").post(verifyJWT, isAdmin, addPlan);

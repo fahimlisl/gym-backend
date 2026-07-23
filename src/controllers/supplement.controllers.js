@@ -519,7 +519,16 @@ const toggleShipped = asyncHandler(async (req, res) => {
 
 
 const adminCheckoutSupplement = asyncHandler(async (req, res) => {
-  const { cart, paymentMethod, customerInfo, notes, couponCode, manualDiscount } = req.body;
+  const { 
+    cart, 
+    paymentMethod, 
+    customerInfo, 
+    notes, 
+    couponCode, 
+    manualDiscount,
+    isSponsor = false,
+    trainerId
+  } = req.body;
 
   if (!cart || cart.length === 0) {
     throw new ApiError(400, "Cart is empty");
@@ -529,8 +538,29 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Payment method must be either 'upi' or 'cash'");
   }
 
+  if (isSponsor && !trainerId) {
+    throw new ApiError(400, "Trainer ID is required for sponsor bills");
+  }
+
+  if (isSponsor && paymentMethod !== "cash") {
+    throw new ApiError(400, "Sponsor bills must use cash payment method");
+  }
+
   if (couponCode && manualDiscount?.value) {
     throw new ApiError(400, "Use either a coupon or a manual discount, not both");
+  }
+
+  let trainerInfo = null;
+  if (isSponsor) {
+    const trainer = await Trainer.findById(trainerId);
+    if (!trainer) {
+      throw new ApiError(404, "Trainer not found");
+    }
+    trainerInfo = {
+      id: trainer._id,
+      name: trainer.fullName,
+      phone: trainer.phoneNumber || ""
+    };
   }
 
   let user = null;
@@ -575,67 +605,77 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
   let discountAmount = 0;
   let appliedCoupon = null;
 
-  if (couponCode) {
-    const coupon = await Coupon.findOne({
-      code: couponCode.toUpperCase(),
-      category: "SUPPLEMENT",
-      isActive: true,
-    });
-
-    if (!coupon) {
-      throw new ApiError(400, "Invalid or inactive coupon");
-    }
-    if (coupon.expiryDate && new Date() > new Date(coupon.expiryDate)) {
-      throw new ApiError(400, "Coupon has expired");
-    }
-    if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
-      throw new ApiError(400, "Coupon usage limit reached");
-    }
-    if (coupon.minCartAmount && subtotal < coupon.minCartAmount) {
-      throw new ApiError(400, `Minimum cart amount of ₹${coupon.minCartAmount} required`);
-    }
-
-    if (coupon.typeOfCoupon === "percentage") {
-      discountAmount = (subtotal * coupon.value) / 100;
-      if (coupon.maxDiscount) {
-        discountAmount = Math.min(discountAmount, coupon.maxDiscount);
-      }
-    } else {
-      discountAmount = coupon.value;
-    }
-    discountAmount = Math.min(discountAmount, subtotal);
-
+  if (isSponsor) {
+    discountAmount = subtotal;
     discountPayload = {
       amount: discountAmount,
-      typeOfDiscount: coupon.typeOfCoupon,
-      value: coupon.value,
-      code: coupon.code,
-    };
-
-    appliedCoupon = coupon;
-  } else if (manualDiscount?.value) {
-    const { type, value } = manualDiscount;
-
-    if (!["percentage", "flat"].includes(type)) {
-      throw new ApiError(400, "manualDiscount.type must be 'percentage' or 'flat'");
-    }
-    if (Number(value) < 0) {
-      throw new ApiError(400, "manualDiscount.value cannot be negative");
-    }
-
-    if (type === "percentage") {
-      discountAmount = (subtotal * Number(value)) / 100;
-    } else {
-      discountAmount = Number(value);
-    }
-    discountAmount = Math.min(discountAmount, subtotal);
-
-    discountPayload = {
-      amount: discountAmount,
-      typeOfDiscount: type,
-      value: Number(value),
+      typeOfDiscount: "percentage",
+      value: 100,
       code: undefined,
     };
+  } else {
+    if (couponCode) {
+      const coupon = await Coupon.findOne({
+        code: couponCode.toUpperCase(),
+        category: "SUPPLEMENT",
+        isActive: true,
+      });
+
+      if (!coupon) {
+        throw new ApiError(400, "Invalid or inactive coupon");
+      }
+      if (coupon.expiryDate && new Date() > new Date(coupon.expiryDate)) {
+        throw new ApiError(400, "Coupon has expired");
+      }
+      if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+        throw new ApiError(400, "Coupon usage limit reached");
+      }
+      if (coupon.minCartAmount && subtotal < coupon.minCartAmount) {
+        throw new ApiError(400, `Minimum cart amount of ₹${coupon.minCartAmount} required`);
+      }
+
+      if (coupon.typeOfCoupon === "percentage") {
+        discountAmount = (subtotal * coupon.value) / 100;
+        if (coupon.maxDiscount) {
+          discountAmount = Math.min(discountAmount, coupon.maxDiscount);
+        }
+      } else {
+        discountAmount = coupon.value;
+      }
+      discountAmount = Math.min(discountAmount, subtotal);
+
+      discountPayload = {
+        amount: discountAmount,
+        typeOfDiscount: coupon.typeOfCoupon,
+        value: coupon.value,
+        code: coupon.code,
+      };
+
+      appliedCoupon = coupon;
+    } else if (manualDiscount?.value) {
+      const { type, value } = manualDiscount;
+
+      if (!["percentage", "flat"].includes(type)) {
+        throw new ApiError(400, "manualDiscount.type must be 'percentage' or 'flat'");
+      }
+      if (Number(value) < 0) {
+        throw new ApiError(400, "manualDiscount.value cannot be negative");
+      }
+
+      if (type === "percentage") {
+        discountAmount = (subtotal * Number(value)) / 100;
+      } else {
+        discountAmount = Number(value);
+      }
+      discountAmount = Math.min(discountAmount, subtotal);
+
+      discountPayload = {
+        amount: discountAmount,
+        typeOfDiscount: type,
+        value: Number(value),
+        code: undefined,
+      };
+    }
   }
 
   const total = subtotal - discountAmount;
@@ -646,9 +686,11 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
     subtotal,
     discountAmount,
     total,
-    paymentMethod,
+    paymentMethod: isSponsor ? "cash" : paymentMethod,
     notes: notes || undefined,
-    status: "delivered", 
+    status: "delivered",
+    isSponsor,
+    ...(trainerInfo && { trainerInfo }),
   };
 
   if (isGuest) {
@@ -664,19 +706,21 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
   const bill = await SupplementBill.create(billData);
   if (!bill) throw new ApiError(500, "Failed to create bill");
 
-  const transaction = await Transaction.create({
-    source: "supplement",
-    referenceModel: "SupplementBill",
-    referenceId: bill._id,
-    amount: total,
-    paymentMethod,
-    status: "success",
-    ...(isGuest ? { guestInfo: billData.guestInfo } : { user: user._id }),
-  });
+  if (!isSponsor) {
+    const transaction = await Transaction.create({
+      source: "supplement",
+      referenceModel: "SupplementBill",
+      referenceId: bill._id,
+      amount: total,
+      paymentMethod,
+      status: "success",
+      ...(isGuest ? { guestInfo: billData.guestInfo } : { user: user._id }),
+    });
 
-  if (!transaction) {
-    await SupplementBill.findByIdAndDelete(bill._id);
-    throw new ApiError(500, "Failed to create transaction");
+    if (!transaction) {
+      await SupplementBill.findByIdAndDelete(bill._id);
+      throw new ApiError(500, "Failed to create transaction");
+    }
   }
 
   for (const item of items) {
@@ -690,7 +734,7 @@ const adminCheckoutSupplement = asyncHandler(async (req, res) => {
   }
 
   return res.status(201).json(
-    new ApiResponse(201, { bill, transaction }, "Sale completed successfully")
+    new ApiResponse(201,bill,"sell has been successfull.")
   );
 });
 
