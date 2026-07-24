@@ -621,7 +621,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
           baseAmount: plan.finalPrice,
           startDate: start,
           endDate: endDate,
-          status: "active",
+          status: subscription?.subscription[subscription?.subscription.length - 1]?.status === "active" ? "upcoming" : "active",
           discount: {
             amount: subscriptionDiscountAmount || 0,
             typeOfDiscount: c?.typeOfCoupon || "",
@@ -1160,6 +1160,8 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     final = plan.finalPrice;
   }
 
+  const ptcheck = await Ptbill.findById(user.personalTraning)
+
   const pt = await Ptbill.findByIdAndUpdate(
     user.personalTraning,
     {
@@ -1169,7 +1171,7 @@ const renewalPtSub = asyncHandler(async (req, res) => {
         plan:plan.duration,
         basePrice:plan.finalPrice,
         finalPrice:final,
-        status: "active",
+        status: ptcheck?.subscription[ptcheck?.subscription.length - 1].status === "active" ? "upcoming" : "active",
         startDate: start,
         endDate: endDate,
         trainer: trainerId,

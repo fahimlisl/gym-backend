@@ -23,7 +23,7 @@ const subsSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["active", "expired", "cancelled"],
+      enum: ["active", "expired", "cancelled","upcoming"],
       default: "active", // need to write status algorith in contorller
     },
 

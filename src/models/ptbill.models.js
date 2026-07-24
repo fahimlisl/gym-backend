@@ -25,7 +25,7 @@ const regularSchema = new mongoose.Schema({
 
     status: {
       type: String,
-      enum: ["active","paused", "expired"], // will use pause if starts at a particular date
+      enum: ["active","paused", "expired","upcoming"], // will use pause if starts at a particular date
       default: "active",
     },
 
