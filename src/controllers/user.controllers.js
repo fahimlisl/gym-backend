@@ -492,10 +492,17 @@ const parseDDMMYYYY = (value) => {
   }
 
   // ISO format: YYYY-MM-DD
+  // if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+  //   const d = new Date(value);
+  //   return isNaN(d.getTime()) ? null : d;
+  // }
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    const d = new Date(value);
+    const [year, month, day] = value.split("-").map(Number);
+
+    const d = new Date(year, month - 1, day);
+
     return isNaN(d.getTime()) ? null : d;
-  }
+}
 
   // DD/MM/YYYY
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
@@ -991,7 +998,7 @@ const assignPT = asyncHandler(async (req, res) => {
     throw new ApiError(400, "wasn't able to update trainer document");
   }
 
-  const newTransaction = await Transaction.create({
+  await Transaction.create({
     user: userId,
     source: "personal-training",
     referenceId:pt._id,
@@ -1001,13 +1008,6 @@ const assignPT = asyncHandler(async (req, res) => {
     status: "success",
     referenceModel:"Ptbill"
   });
-
-  if(startDate){
-    await Transaction.collection.updateOne(
-    { _id: newTransaction._id },
-    { $set: { createdAt: startDate } }
-  );
-  }
 
   const user = await User.findByIdAndUpdate(
     userId,
@@ -1228,13 +1228,6 @@ const renewalPtSub = asyncHandler(async (req, res) => {
     referenceModel:"Ptbill"
   });
 
-    if(startDate){
-    await Transaction.collection.updateOne(
-      { _id: newTransaction._id },
-      { $set: { createdAt: startDate } }
-    );
-  }
-
     if(coupon && c) {
     await Coupon.findByIdAndUpdate(c._id, {
       $inc: { usedCount: 1 },
@@ -1441,7 +1434,7 @@ const chagneDate = asyncHandler(async(req,res) => {
 
   const parseDate = (str) => {
     const [day, month, year] = str.split("-");
-    return new Date(`${year}-${month}-${day}`);
+    return new Date(Number(year), Number(month) - 1, Number(day));
   };
   const latest = subscription?.subscription[subscription?.subscription?.length - 1];
   if(!subscription) throw new ApiError(401,"no subscription found regarding this particular user");
@@ -1454,14 +1447,6 @@ const chagneDate = asyncHandler(async(req,res) => {
   subscription.markModified('subscription');
   await subscription.save({validateBeforeSave:false});
 
-// to change transaction date
-//   const transaction = await Transaction.findOne({subReferenceId: latest?._id});
-//   if(!transaction) throw new ApiError(400,"transaction record not found regarding this subscription");
-// const uptrans = await Transaction.collection.updateOne(
-//   { _id: transaction._id },
-//   { $set: { createdAt: parseDate(startDate) } }
-// );
-// if(!uptrans) throw new ApiError(400,"failed to update transaction date");
 
   return res
   .status(200)
@@ -1480,7 +1465,7 @@ const changePtBillDate = asyncHandler(async (req, res) => {
 
   const parseDate = (str) => {
     const [day, month, year] = str.split("-");
-    return new Date(`${year}-${month}-${day}`);
+    return new Date(Number(year), Number(month) - 1, Number(day));
   };
 
   if (!ptBill) throw new ApiError(401, "no PT bill found regarding this particular user");
@@ -1494,15 +1479,6 @@ const changePtBillDate = asyncHandler(async (req, res) => {
   latest.endDate = parseDate(endDate);
   ptBill.markModified('subscription');
   await ptBill.save({ validateBeforeSave: false });
-
-  // to change transaction date
-  // const transaction = await Transaction.findOne({ subReferenceId: latest?._id });
-  // if (!transaction) throw new ApiError(400, "transaction record not found regarding this PT bill");
-  // const uptrans = await Transaction.collection.updateOne(
-  //   { _id: transaction._id },
-  //   { $set: { createdAt: parseDate(startDate) } }
-  // );
-  // if (!uptrans) throw new ApiError(400, "failed to update transaction date");
 
   return res
     .status(200)
