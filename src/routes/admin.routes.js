@@ -224,13 +224,18 @@ router.route("/toggleAvailability/:id").patch(verifyJWT, isAdmin, toggleAvailabi
 router.route("/add/cafe/category").post(verifyJWT, addCateGory);
 router.route("/get/cafe/categories").get(verifyJWT, isAdmin, getCafeCategories);
 
+// permission given to all admins 
+router.route("/coupon").post(verifyJWT, isAdmin, fetchParticularCoupon);
+
+
+
 // coupon — super admin only
 router.route("/add-coupon").post(verifyJWT, isAdmin, isSuperAdmin, addCoupon);
 router.route("/fetchAllCoupons").get(verifyJWT, isAdmin, fetchAllCoupons);
 router.route("/edit-coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, editCoupons);
 router.route("/toggleCouponExpire/:id").patch(verifyJWT, isAdmin, isSuperAdmin, toggleCouponExpire);
 router.route("/destroyCoupon/:id").delete(verifyJWT, isAdmin, isSuperAdmin, destroyCoupon);
-router.route("/coupon").post(verifyJWT, isAdmin, isSuperAdmin, fetchParticularCoupon);
+// router.route("/coupon").post(verifyJWT, isAdmin, isSuperAdmin, fetchParticularCoupon);
 
 // trainer coupon — super admin only
 router.route("/add/trainer/coupon/:trainerId").post(verifyJWT, isAdmin, isSuperAdmin, addTrainerCoupon);
