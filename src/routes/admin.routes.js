@@ -226,15 +226,22 @@ router.route("/get/cafe/categories").get(verifyJWT, isAdmin, getCafeCategories);
 
 // permission given to all admins 
 router.route("/coupon").post(verifyJWT, isAdmin, fetchParticularCoupon);
-
+x
 
 
 // coupon — super admin only
-router.route("/add-coupon").post(verifyJWT, isAdmin, isSuperAdmin, addCoupon);
+router.route("/add-coupon").post(verifyJWT, isAdmin, addCoupon);
 router.route("/fetchAllCoupons").get(verifyJWT, isAdmin, fetchAllCoupons);
-router.route("/edit-coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, editCoupons);
-router.route("/toggleCouponExpire/:id").patch(verifyJWT, isAdmin, isSuperAdmin, toggleCouponExpire);
-router.route("/destroyCoupon/:id").delete(verifyJWT, isAdmin, isSuperAdmin, destroyCoupon);
+router.route("/edit-coupon/:id").patch(verifyJWT, isAdmin, editCoupons);
+router.route("/toggleCouponExpire/:id").patch(verifyJWT, isAdmin, toggleCouponExpire);
+router.route("/destroyCoupon/:id").delete(verifyJWT, isAdmin, destroyCoupon);
+
+// comenting out cuz coupon access is required for normal admins as well
+// router.route("/add-coupon").post(verifyJWT, isAdmin, isSuperAdmin, addCoupon);
+// router.route("/fetchAllCoupons").get(verifyJWT, isAdmin, fetchAllCoupons);
+// router.route("/edit-coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, editCoupons);
+// router.route("/toggleCouponExpire/:id").patch(verifyJWT, isAdmin, isSuperAdmin, toggleCouponExpire);
+// router.route("/destroyCoupon/:id").delete(verifyJWT, isAdmin, isSuperAdmin, destroyCoupon);
 // router.route("/coupon").post(verifyJWT, isAdmin, isSuperAdmin, fetchParticularCoupon);
 
 // trainer coupon — super admin only
