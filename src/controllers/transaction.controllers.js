@@ -83,7 +83,15 @@ const getStartOfDay = () => {
 };
 const getStartOfWeek = () => {
   const d = new Date();
-  d.setDate(d.getDate() - 7);
+  const dayOfMonth = d.getDate();
+
+  let weekStartDay;
+  if (dayOfMonth <= 7) weekStartDay = 1;
+  else if (dayOfMonth <= 14) weekStartDay = 8;
+  else if (dayOfMonth <= 21) weekStartDay = 15;
+  else weekStartDay = 22; // last "week" absorbs the remaining days (22–28/29/30/31)
+
+  d.setDate(weekStartDay);
   d.setHours(0, 0, 0, 0);
   return d;
 };

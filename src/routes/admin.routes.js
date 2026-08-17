@@ -226,7 +226,6 @@ router.route("/get/cafe/categories").get(verifyJWT, isAdmin, getCafeCategories);
 
 // permission given to all admins 
 router.route("/coupon").post(verifyJWT, isAdmin, fetchParticularCoupon);
-x
 
 
 // coupon — super admin only
@@ -255,9 +254,9 @@ router.route("/destroy/trainer/coupon/:id").delete(verifyJWT, isAdmin, isSuperAd
 // expense — view only for regular admin, mutate for super admin only
 router.route("/fetchAllExpenses").get(verifyJWT, isAdmin, fetchAllExpenses);
 router.route("/fetchEquipmentsExpenses").get(verifyJWT, isAdmin, fetchEquipmentsExpenses);
-router.route("/add-expense").post(verifyJWT, isAdmin, isSuperAdmin, addExpense);
-router.route("/edit-expense/:id").patch(verifyJWT, isAdmin, isSuperAdmin, editExpense);
-router.route("/delete-expense/:expnseId").delete(verifyJWT, isAdmin, isSuperAdmin, destroyExpense);
+router.route("/add-expense").post(verifyJWT, isAdmin, addExpense);
+router.route("/edit-expense/:id").patch(verifyJWT, isAdmin, editExpense);
+router.route("/delete-expense/:expnseId").delete(verifyJWT, isAdmin, destroyExpense);
 
 // payment in
 router.route("/add/payment/in").post(verifyJWT, isAdmin, addPaymentIn);

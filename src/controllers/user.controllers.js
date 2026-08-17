@@ -628,7 +628,7 @@ const renewalSubscription = asyncHandler(async (req, res) => {
           baseAmount: plan.finalPrice,
           startDate: start,
           endDate: endDate,
-          status: subscription?.subscription[subscription?.subscription.length - 1]?.status === "active" ? "upcoming" : "active",
+          status: subscription?.subscription[subscription?.subscription.length - 1]?.status !== "expired" ? "upcoming" : "active",
           discount: {
             amount: subscriptionDiscountAmount || 0,
             typeOfDiscount: c?.typeOfCoupon || "",
@@ -739,42 +739,64 @@ const renewalSubscription = asyncHandler(async (req, res) => {
 
 
 const editUser = asyncHandler(async (req, res) => {
-  const { username, email, phoneNumber } = req.body;
-  const userId = req.params.id;
-  const user = await User.findById(userId);
-  if (!user) {
-    throw new ApiError(404, "User not found");
-  }
+    const { username, email, phoneNumber } = req.body;
+    const userId = req.params.id;
 
-  const updateData = {
-    username: username ?? user.username,
-    phoneNumber: phoneNumber ?? user.phoneNumber,
+    const user = await User.findById(userId);
 
-    email: email ?? user.email ?? "",
-  };
-
-  if (req.file?.buffer) {
-    if (user.avatar?.public_id) {
-      await deleteFromCloudinary(user.avatar.public_id);
+    if (!user) {
+        throw new ApiError(404, "User not found");
     }
 
-    const avatarf = await uploadOnCloudinary(req.file.buffer);
-
-    updateData.avatar = {
-      url: avatarf.url,
-      public_id: avatarf.public_id,
+    const updateData = {
+        username: username ?? user.username,
+        phoneNumber: phoneNumber ?? user.phoneNumber,
+        email: email ?? user.email ?? "",
     };
-  }
 
-  const updatedUser = await User.findByIdAndUpdate(
-    userId,
-    { $set: updateData },
-    { new: true }
-  );
+    if (req.file?.buffer) {
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, updatedUser, "User updated successfully"));
+        const oldAvatar = user.avatar;
+        const avatarf = await uploadOnCloudinary(req.file.buffer);
+
+        if (!avatarf) {
+            throw new ApiError(400, "Failed to upload avatar");
+        }
+        updateData.avatar = {
+            url: avatarf.url,
+            public_id: avatarf.public_id,
+        };
+
+        if (
+            oldAvatar?.public_id &&
+            oldAvatar.public_id.startsWith("gym/")
+        ) {
+            try {
+                await deleteFromCloudinary(oldAvatar.public_id);
+            } catch (error) {
+                console.error(
+                    "Failed to delete old Cloudinary avatar:",
+                    error.message
+                );
+            }
+        }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: updateData },
+        { new: true }
+    );
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                updatedUser,
+                "User updated successfully"
+            )
+        );
 });
 
 // will add a lil changes for fetching when users count is 0
@@ -1171,7 +1193,7 @@ const renewalPtSub = asyncHandler(async (req, res) => {
         plan:plan.duration,
         basePrice:plan.finalPrice,
         finalPrice:final,
-        status: ptcheck?.subscription[ptcheck?.subscription.length - 1].status === "active" ? "upcoming" : "active",
+        status: ptcheck?.subscription[ptcheck?.subscription.length - 1].status !== "expired" ? "upcoming" : "active",
         startDate: start,
         endDate: endDate,
         trainer: trainerId,
