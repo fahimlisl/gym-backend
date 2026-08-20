@@ -1,9 +1,13 @@
 import { Router } from "express";
 import {
+  fetchAllNonSuperAdmins,
+  getAAdmin,
   getAdminProfile,
   loginAdmin,
   logOutAdmin,
   registerAdmin,
+  removeAdmin,
+  togglePermission,
 } from "../controllers/admin.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 import {
@@ -149,6 +153,8 @@ router.route("/logout").post(verifyJWT, logOutAdmin);
 router.route("/change/password").patch(verifyJWT, isAdmin, changePassword(Admin));
 router.route("/reset/password/token").post(generateresetPasswordToken(Admin));
 router.route("/reset/password").post(validateOTPandChangePassword(Admin));
+router.route("/toggle/permission/:permission/:adminId").patch(verifyJWT,isAdmin,isSuperAdmin,togglePermission);
+router.route("/fetch/admins").get(verifyJWT,isAdmin,isSuperAdmin,fetchAllNonSuperAdmins);
 
 // user/member
 router.route("/registerUser").post(upload.single("avatar"), verifyJWT, isAdmin, registerUser);
@@ -244,12 +250,20 @@ router.route("/destroyCoupon/:id").delete(verifyJWT, isAdmin, destroyCoupon);
 // router.route("/coupon").post(verifyJWT, isAdmin, isSuperAdmin, fetchParticularCoupon);
 
 // trainer coupon — super admin only
-router.route("/add/trainer/coupon/:trainerId").post(verifyJWT, isAdmin, isSuperAdmin, addTrainerCoupon);
+// router.route("/add/trainer/coupon/:trainerId").post(verifyJWT, isAdmin, isSuperAdmin, addTrainerCoupon);
+// router.route("/fetch/trainer/coupon/all").get(verifyJWT, isAdmin, fetchAllTrainerCoupons);
+// router.route("/edit/trainer/coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, editTrainerCoupons);
+// router.route("/toggle/trainer/coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, toggleTrainerCouponExpire);
+// router.route("/fetch/trainer/coupon").post(verifyJWT, isAdmin, isSuperAdmin, fetchParticularTrainerCoupon);
+// router.route("/destroy/trainer/coupon/:id").delete(verifyJWT, isAdmin, isSuperAdmin, destroyTrainerCoupon);
+
+// write in logic of trainer coupon contorller so that in there can be manually checked weather its accessable for that particualr admin , for now removing the isSuperAdmin middleware form the routes
+router.route("/add/trainer/coupon/:trainerId").post(verifyJWT, isAdmin, addTrainerCoupon);
 router.route("/fetch/trainer/coupon/all").get(verifyJWT, isAdmin, fetchAllTrainerCoupons);
-router.route("/edit/trainer/coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, editTrainerCoupons);
-router.route("/toggle/trainer/coupon/:id").patch(verifyJWT, isAdmin, isSuperAdmin, toggleTrainerCouponExpire);
-router.route("/fetch/trainer/coupon").post(verifyJWT, isAdmin, isSuperAdmin, fetchParticularTrainerCoupon);
-router.route("/destroy/trainer/coupon/:id").delete(verifyJWT, isAdmin, isSuperAdmin, destroyTrainerCoupon);
+router.route("/edit/trainer/coupon/:id").patch(verifyJWT, isAdmin, editTrainerCoupons);
+router.route("/toggle/trainer/coupon/:id").patch(verifyJWT, isAdmin, toggleTrainerCouponExpire);
+router.route("/fetch/trainer/coupon").post(verifyJWT, isAdmin, fetchParticularTrainerCoupon);
+router.route("/destroy/trainer/coupon/:id").delete(verifyJWT, isAdmin, destroyTrainerCoupon);
 
 // expense — view only for regular admin, mutate for super admin only
 router.route("/fetchAllExpenses").get(verifyJWT, isAdmin, fetchAllExpenses);
@@ -320,7 +334,8 @@ router.route("/diet/check/:id").get(verifyJWT, isAdmin, checkIfDietExists);
 router.route("/diet/check/status/:id").get(verifyJWT, isAdmin, approveCheck);
 
 router.route("/get/me").get(verifyJWT, isAdmin,getAdminProfile)
-
+router.route("/get/a/:_id").get(verifyJWT,isAdmin,getAAdmin)
+router.route("/remove/admin/:adminId").delete(verifyJWT,isAdmin,isSuperAdmin,removeAdmin)
 // send wp messages
 router.route("/api/send-whatsapp").post(verifyJWT,isAdmin,sendWpMessage)
 
