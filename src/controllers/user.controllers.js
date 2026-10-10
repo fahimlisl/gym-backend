@@ -2,7 +2,6 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import generateAccessAndRefreshToken from "../utils/generateANR.js";
-import { options } from "../utils/options.js";
 import { User } from "../models/user.models.js";
 import {
   deleteFromCloudinary,
@@ -19,6 +18,7 @@ import getNextSequence from "../utils/getNextSequence.js"
 import { TrainerCoupon } from "../models/trainercoupon.models.js"
 import { TempPtBill } from "../models/ptbill.temp.models.js";
 import { sendWhatsAppMessage } from "../service/sendWp.js";
+import { accessCookieOptions, refreshCookieOptions } from "../utils/authCookies.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const {
@@ -418,8 +418,8 @@ const loginUser = asyncHandler(async (req, res) => {
   const safeUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
-  res.cookie("accessToken", accessToken, cookieOptions);
-  res.cookie("refreshToken", refreshToken, cookieOptions);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
+  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
   return res.status(200).json({
     success: true,
@@ -435,19 +435,9 @@ const logOutUser = asyncHandler(async (req, res) => {
     $unset: { refreshToken: 1 },
   });
 
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
+  res.clearCookie("accessToken", accessCookieOptions);
 
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
+  res.clearCookie("refreshToken", refreshCookieOptions);
 
   return res.status(200).json({
     success: true,

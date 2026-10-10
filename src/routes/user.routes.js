@@ -12,6 +12,7 @@ import { fetchParticularCoupon } from "../controllers/coupon.controllers.js";
 import { isUser } from "../middlewares/isUser.middlewares.js"
 import { getUserAssignedWorkout } from "../controllers/assignedWorkout.controllers.js";
 import { getMyQR, markAttendanceByGymQR } from "../controllers/attendence.controllers.js";
+import { refreshAccessToken } from "../service/refresh.access.service.js";
 const router = Router();
 
 
@@ -60,4 +61,9 @@ router.get('/workout', verifyJWT, isUser, getUserAssignedWorkout)
 // router.route("/attendance/my-qr").get( verifyJWT,isUser, getMyQR);
 router.route("/attendance/my-qr").get( verifyJWT, getMyQR);
 router.post("/attendance/gym-qr", verifyJWT, isUser, markAttendanceByGymQR);
+
+
+// refreshing token
+router.route("/refresh").post(refreshAccessToken(User));
+
 export default router;

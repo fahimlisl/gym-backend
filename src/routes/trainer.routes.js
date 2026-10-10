@@ -13,6 +13,9 @@ import { getUserWorkout } from "../controllers/assignedWorkout.controllers.js";
 import { fetchAllUser } from "../controllers/user.controllers.js";
 import { getMyAttendance, getSingleTrainerMonthlyAttendance, getTrainerQR, markTrainerAttendanceByGymQR } from "../controllers/trainerAttendance.controllers.js";
 import { fetchCouponForTrainerSelf } from "../controllers/trainercoupon.controllers.js";
+import { refreshAccessToken } from "../service/refresh.access.service.js";
+import { markTrainerAttendance } from "../controllers/trainer.attendance.controller.js";
+import { faceUpload } from "../middlewares/faceUpload.middleware.js";
 
 const router = Router();
 
@@ -43,5 +46,21 @@ router.post("/attendance/trainer/gym-qr", verifyJWT, isTrainer, markTrainerAtten
 router.get('/user/:userId/workout', verifyJWT, isTrainer, getUserWorkout)
 router.route("/fetchAllUser").get(verifyJWT, isTrainer, fetchAllUser);
 router.route("/fetchAssignedStudents").get(verifyJWT,isTrainer,fetchAssignedStudents)
+
+
+// refreshing token
+router
+  .route("/refresh")
+  .post(refreshAccessToken(Trainer));
+
+
+// attendance 
+router.post(
+  "/attendance/verify",
+  verifyJWT,
+  isTrainer,
+  faceUpload.array("face",3),
+  markTrainerAttendance
+);
 
 export default router

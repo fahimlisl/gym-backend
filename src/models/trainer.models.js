@@ -21,6 +21,33 @@ const trainerSchema = new mongoose.Schema({
         type:String,
         required:true
     },
+    verificationAvatar:{
+        url:{
+          type:String,
+          required:true
+        },
+        public_id:{
+          type:String,
+          required:true
+        }
+    },
+    verificationPhotos: {
+      type: [
+        new Schema(
+          {
+            url: { type: String, required: true },
+            public_id: { type: String, required: true },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
+    faceEmbeddings: {
+      type: [[Number]],
+      select: false,
+      default: undefined,
+    },
     bonus:{
       totalBonus: {
         type:Number,

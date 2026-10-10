@@ -18,7 +18,7 @@ const generateresetPasswordToken = (Model) =>
       $or: [{ email }, { phoneNumber }],
     });
     if (!user) throw new ApiError(400, "check email or phone number!");
-    const otp = Math.round(Math.random() * 1000000);
+    const otp = Math.floor(100000 + Math.random() * 900000);
     const token = jwt.sign(
       {
         OTP: otp,

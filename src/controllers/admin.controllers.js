@@ -3,7 +3,13 @@ import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/AsyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import generateAccessAndRefreshToken from "../utils/generateANR.js";
-import { options } from "../utils/options.js";
+import mongoose from "mongoose";
+import { generateReferenceFaceEmbedding } from "../service/faceRecognition.service.js";
+import { Trainer } from "../models/trainer.models.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { accessCookieOptions, refreshCookieOptions } from "../utils/authCookies.js";
+import { v2 as cloudinary } from "cloudinary";
+import { createHash } from "node:crypto";
 
 const registerAdmin = asyncHandler(async (req, res) => {
   const { username, email, password, phoneNumber ,isSuperAdmin} = req.body;
@@ -75,8 +81,8 @@ const loginAdmin = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
-  res.cookie("accessToken", accessToken, cookieOptions);
-  res.cookie("refreshToken", refreshToken, cookieOptions);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
+  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
   return res.status(200).json({
     success: true,
@@ -93,19 +99,9 @@ const logOutAdmin = asyncHandler(async (req, res) => {
     $unset: { refreshToken: 1 },
   });
 
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
+  res.clearCookie("accessToken",accessCookieOptions);
 
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
+  res.clearCookie("refreshToken",refreshCookieOptions);
 
   return res.status(200).json({
     success: true,
@@ -208,5 +204,214 @@ const removeAdmin = asyncHandler(async(req,res) => {
     new ApiResponse(200,{},`${admin?.username} admin deleted successfully`)
   )
 })
+
+
+// admin controller for verified avatar upload of trainer
+
+
+const removeCloudinaryPhotos = async (photos) => {
+  const results = await Promise.allSettled(
+    photos
+      .filter((photo) => photo?.public_id)
+      .map((photo) =>
+        cloudinary.uploader.destroy(photo.public_id)
+      )
+  );
+
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error(
+        "[ENROLLMENT] Cloudinary cleanup failed:",
+        result.reason
+      );
+    }
+  }
+};
+
+export const uploadTrainerVerificationAvatar = asyncHandler(
+  async (req, res) => {
+    const { trainerId } = req.params;
+    const files = req.files ?? [];
+
+    if (!mongoose.isValidObjectId(trainerId)) {
+      throw new ApiError(400, "Invalid trainer ID.");
+    }
+
+    if (files.length < 3 || files.length > 5) {
+      throw new ApiError(
+        400,
+        "Upload between 3 and 5 reference photos."
+      );
+    }
+
+    const trainer = await Trainer.findById(trainerId);
+
+    if (!trainer) {
+      throw new ApiError(404, "Trainer not found.");
+    }
+
+    const hashes = files.map((file) =>
+      createHash("sha256")
+        .update(file.buffer)
+        .digest("hex")
+    );
+
+    if (new Set(hashes).size !== files.length) {
+      throw new ApiError(
+        400,
+        "Duplicate reference photos are not allowed."
+      );
+    }
+
+    const embeddings = [];
+
+    for (const file of files) {
+      const faceData =
+        await generateReferenceFaceEmbedding(
+          file.buffer
+        );
+
+      if (
+        !Array.isArray(faceData.embedding) ||
+        faceData.embedding.length === 0 ||
+        !faceData.embedding.every(Number.isFinite)
+      ) {
+        throw new ApiError(
+          400,
+          "Unable to process one of the reference photos."
+        );
+      }
+
+      embeddings.push(faceData.embedding);
+    }
+
+    const expectedLength = embeddings[0].length;
+
+    if (
+      !embeddings.every(
+        (embedding) =>
+          embedding.length === expectedLength
+      )
+    ) {
+      throw new ApiError(
+        400,
+        "Reference embeddings have incompatible dimensions."
+      );
+    }
+
+    const oldPhotos =
+      trainer.verificationPhotos?.length
+        ? trainer.verificationPhotos.map((photo) => ({
+            url: photo.url,
+            public_id: photo.public_id,
+          }))
+        : trainer.verificationAvatar?.public_id
+          ? [{
+              url: trainer.verificationAvatar.url,
+              public_id:
+                trainer.verificationAvatar.public_id,
+            }]
+          : [];
+
+    const uploadedPhotos = [];
+
+    try {
+      // Store every actual image in Cloudinary.
+      for (const file of files) {
+        const uploaded = await uploadOnCloudinary(
+          file.buffer
+        );
+
+        if (!uploaded?.url || !uploaded?.public_id) {
+          throw new ApiError(
+            500,
+            "Failed to upload one of the reference photos."
+          );
+        }
+
+        uploadedPhotos.push({
+          url: uploaded.url,
+          public_id: uploaded.public_id,
+        });
+      }
+
+      // Save all five images and all five embeddings.
+      trainer.verificationPhotos = uploadedPhotos;
+
+      // Legacy compatibility.
+      trainer.verificationAvatar = uploadedPhotos[0];
+      trainer.faceEmbedding = embeddings[0];
+
+      // Multi-reference recognition.
+      trainer.faceEmbeddings = embeddings;
+
+      await trainer.save();
+    } catch (error) {
+      // Only newly uploaded images are removed if saving fails.
+      await removeCloudinaryPhotos(uploadedPhotos);
+
+      throw error;
+    }
+
+    // Delete old photos only after MongoDB saves successfully.
+    await removeCloudinaryPhotos(oldPhotos);
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          trainerId: trainer._id,
+          verificationAvatar: trainer.verificationAvatar,
+          referenceCount: embeddings.length,
+          photoCount: uploadedPhotos.length,
+          faceEnrolled: true,
+        },
+        "Trainer face enrollment updated successfully."
+      )
+    );
+  }
+);
+
+
+export const getTrainerVerificationPhotos = asyncHandler(
+  async (req, res) => {
+    const { trainerId } = req.params;
+
+    if (!mongoose.isValidObjectId(trainerId)) {
+      throw new ApiError(400, "Invalid trainer ID.");
+    }
+
+    const trainer = await Trainer.findById(trainerId)
+      .select("verificationPhotos verificationAvatar")
+      .lean();
+
+    if (!trainer) {
+      throw new ApiError(404, "Trainer not found.");
+    }
+
+    const photos = trainer.verificationPhotos?.length
+      ? trainer.verificationPhotos
+      : trainer.verificationAvatar?.url
+        ? [trainer.verificationAvatar]
+        : [];
+
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          photos: photos.map((photo) => ({
+            url: photo.url,
+            public_id: photo.public_id,
+          })),
+          count: photos.length,
+        },
+        "Trainer verification photos fetched."
+      )
+    );
+  }
+);
+
+
+
 
 export { registerAdmin, loginAdmin, logOutAdmin , getAdminProfile , togglePermission,fetchAllNonSuperAdmins,removeAdmin};

@@ -11,6 +11,7 @@ import {
 import { User } from "../models/user.models.js";
 import axios from "axios";
 import {SupplementBill} from "../models/supplementbill.models.js"
+import { accessCookieOptions, refreshCookieOptions } from "../utils/authCookies.js";
 
 const registerTrainer = asyncHandler(async (req, res) => {
   const { fullName, email, phoneNumber, experience, salary } =
@@ -91,13 +92,6 @@ const defaultPassword = generateDefaultPassword(fullName)
 });
 
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/",
-};
-
 const loginTrainier = asyncHandler(async (req, res) => {
   const { email, phoneNumber, password } = req.body;
 
@@ -130,8 +124,8 @@ const loginTrainier = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
-  res.cookie("accessToken", accessToken, cookieOptions);
-  res.cookie("refreshToken", refreshToken, cookieOptions);
+  res.cookie("accessToken", accessToken, accessCookieOptions);
+  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
   return res.status(200).json({
     success: true,
@@ -147,20 +141,10 @@ const logOutTrainer = asyncHandler(async (req, res) => {
     $unset: { refreshToken: 1 },
   });
 
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
 
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: "/",
-  });
-
+  res
+  .clearCookie("accessToken", accessCookieOptions)
+  .clearCookie("refreshToken", refreshCookieOptions);
   return res.status(200).json({
     success: true,
     message: "Trainer logged out successfully",

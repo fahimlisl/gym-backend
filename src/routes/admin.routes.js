@@ -3,11 +3,13 @@ import {
   fetchAllNonSuperAdmins,
   getAAdmin,
   getAdminProfile,
+  getTrainerVerificationPhotos,
   loginAdmin,
   logOutAdmin,
   registerAdmin,
   removeAdmin,
   togglePermission,
+  uploadTrainerVerificationAvatar,
 } from "../controllers/admin.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middlewares.js";
 import {
@@ -144,6 +146,10 @@ import {
   toggleTrainerCouponExpire,
 } from "../controllers/trainercoupon.controllers.js";
 import { sendWpMessage } from "../service/sendWp.js";
+import { refreshAccessToken } from "../service/refresh.access.service.js";
+import { faceUpload } from "../middlewares/faceUpload.middleware.js";
+import { disableTrainerSchedule, fetchTrainerSchedule, upsertTrainerSchedule } from "../controllers/admin.schedule.controller.js";
+import { getAllTrainerAttendanceByDate, getTrainerAttendanceByDate } from "../controllers/admin.attendance.controller.js";
 
 const router = Router();
 
@@ -163,7 +169,7 @@ router.route("/renewalSubscription/:id/:planId").patch(verifyJWT, isAdmin, renew
 router.route("/edit-user/:id").patch(upload.single("avatar"), verifyJWT, isAdmin, editUser);
 router.route("/fetchAllUser").get(verifyJWT, isAdmin, fetchAllUser);
 router.route("/fetchParticularUser/:id").get(verifyJWT, isAdmin, fetchParticularUser);
-router.route("/subscription/change/date/:userId").patch(verifyJWT,isAdmin,isSuperAdmin,chagneDate);
+router.route("/subscription/change/date/:userId").patch(verifyJWT,isAdmin,chagneDate);
 router.route("/ptbill/change/date/:userId").patch(verifyJWT,isAdmin,changePtBillDate)
 
 // personal training
@@ -338,5 +344,45 @@ router.route("/get/a/:_id").get(verifyJWT,isAdmin,getAAdmin)
 router.route("/remove/admin/:adminId").delete(verifyJWT,isAdmin,isSuperAdmin,removeAdmin)
 // send wp messages
 router.route("/api/send-whatsapp").post(verifyJWT,isAdmin,sendWpMessage)
+
+// refreshing token 
+router.route("/refresh").post(refreshAccessToken(Admin));
+
+// trainer face 
+router.patch(
+  "/trainer/:trainerId/verification-avatar",
+  verifyJWT,
+  isAdmin,
+  faceUpload.array("verificationAvatar",5),
+  uploadTrainerVerificationAvatar
+);
+
+router.route("/trainer/:trainerId/schedule")
+  .get(verifyJWT, isAdmin, fetchTrainerSchedule)
+  .put(verifyJWT, isAdmin, upsertTrainerSchedule)
+  .delete(verifyJWT, isAdmin, disableTrainerSchedule);
+
+
+  router.get(
+  "/trainer-attendance",
+  verifyJWT,isAdmin,
+  getAllTrainerAttendanceByDate
+);
+
+router.get(
+  "/trainer-attendance/:trainerId",
+  verifyJWT,isAdmin,
+  getTrainerAttendanceByDate
+);
+
+router.get(
+  "/trainer/:trainerId/verification-photos",
+  verifyJWT,
+  isAdmin,
+  getTrainerVerificationPhotos
+);
+
+
+
 
 export default router;
