@@ -34,14 +34,15 @@ const registerUser = asyncHandler(async (req, res) => {
     paymentId,
     orderId,
     coupon, 
-    ReferralCode
+    ReferralCode,
+    gender
   } = req.body;
 
   if (!planId) {
     throw new ApiError(400, "planId is required");
   }
 
-  if ([username, phoneNumber].some((v) => !v && v !== 0)) {
+  if ([username, phoneNumber,gender].some((v) => !v && v !== 0)) {
     throw new ApiError(400, "username, phoneNumber are required");
   }
 
@@ -150,7 +151,8 @@ const registerUser = asyncHandler(async (req, res) => {
     avatar:{
       url:avatarOnCloud.url,
       public_id:avatarOnCloud.public_id
-    }
+    },
+    gender
   });
 
   const startDate = new Date();
@@ -290,6 +292,7 @@ const registerUser = asyncHandler(async (req, res) => {
     couponUsed: coupon || null,
     registrationDate: new Date().toISOString(),
     password: defaultPassword,
+    gender: gender
   });
 } catch (error) {
   console.error("Failed to trigger n8n webhook:", error);

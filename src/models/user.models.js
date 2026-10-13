@@ -56,6 +56,11 @@ const userSchema = new mongoose.Schema(
       type: Schema.Types.ObjectId,
       ref:"AssignedWorkout"
     },
+    gender:{
+      type:String,
+      enum:["male","female","prefer not to say"],
+      required:true
+    },
     serialNumber: {
       type: Number,
       unique: true,
