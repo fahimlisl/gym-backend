@@ -13,6 +13,8 @@ import { isUser } from "../middlewares/isUser.middlewares.js"
 import { getUserAssignedWorkout } from "../controllers/assignedWorkout.controllers.js";
 import { getMyQR, markAttendanceByGymQR } from "../controllers/attendence.controllers.js";
 import { refreshAccessToken } from "../service/refresh.access.service.js";
+import { chatWithMemberAi, openMemberAi } from "../controllers/memberAi.controllers.js";
+import { createMemberComplaint } from "../controllers/memberComplaint.controllers.js.js";
 const router = Router();
 
 
@@ -65,5 +67,10 @@ router.post("/attendance/gym-qr", verifyJWT, isUser, markAttendanceByGymQR);
 
 // refreshing token
 router.route("/refresh").post(refreshAccessToken(User));
+
+// route for ai 
+router.route("/ai/open").post(verifyJWT,openMemberAi)
+router.route("/ai/chat").post(verifyJWT,chatWithMemberAi)
+router.route("/ai/complaint").post(verifyJWT,createMemberComplaint)
 
 export default router;

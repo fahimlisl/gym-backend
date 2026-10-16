@@ -150,6 +150,7 @@ import { refreshAccessToken } from "../service/refresh.access.service.js";
 import { faceUpload } from "../middlewares/faceUpload.middleware.js";
 import { disableTrainerSchedule, fetchTrainerSchedule, upsertTrainerSchedule } from "../controllers/admin.schedule.controller.js";
 import { getAllTrainerAttendanceByDate, getTrainerAttendanceByDate } from "../controllers/admin.attendance.controller.js";
+import { getAdminMemberComplaints, getAdminMemberComplaintStats, updateAdminMemberComplaintStatus } from "../controllers/memberComplaint.controllers.js.js";
 
 const router = Router();
 
@@ -382,6 +383,26 @@ router.get(
   getTrainerVerificationPhotos
 );
 
+// get complaint statistics
+router.get(
+  "/member-complaints/stats",
+  verifyJWT,
+  getAdminMemberComplaintStats
+);
+
+// get all complaints with filters and pagination
+router.get(
+  "/member-complaints",
+  verifyJWT,
+  getAdminMemberComplaints
+);
+
+// update complaint status
+router.patch(
+  "/member-complaints/:id/status",
+  verifyJWT,
+  updateAdminMemberComplaintStatus
+);
 
 
 

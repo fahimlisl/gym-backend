@@ -383,13 +383,6 @@ const checkUser = asyncHandler(async(req,res) => {
 });
 
 
-const cookieOptions = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "none",
-  path: "/",
-};
-
 const loginUser = asyncHandler(async (req, res) => {
   const { email, phoneNumber, password } = req.body;
 

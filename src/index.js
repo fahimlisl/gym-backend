@@ -1,8 +1,9 @@
-import app from "./app.js";
 import dotenv from "dotenv"
+import app from "./app.js";
 import { connectDB } from "./db/index.js";
 
 // invoking cron methods just when the server starts
+import { connectRedis } from "./utils/redis.js";
 import "./cron/couponExpire.cron.js"; 
 import "./cron/subscriptionExpire.cron.js"
 import "./cron/ptExpiry.cron.js"
@@ -13,6 +14,7 @@ import "./cron/upcoming.cron.js"
 dotenv.config({
     path:"./.env"
 })
+await connectRedis();
 
 connectDB()
 .then(() => {
