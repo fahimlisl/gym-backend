@@ -20,7 +20,7 @@
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "@tensorflow/tfjs-backend-wasm": "^4.22.0",
     "@vladmandic/human": "^3.3.6",
-    "@whiskeysockets/baileys": "^7.0.0-rc13",
+    "@whiskeysockets/baileys": "^6.7.24",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.9.0",
