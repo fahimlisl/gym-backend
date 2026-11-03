@@ -42,6 +42,7 @@ import {
   checkIfTempBillExist,
   destroyUser,
   editUser,
+  fetchAllPTPlansForAParticularUser,
   fetchAllUser,
   fetchParticularUser,
   registerUser,
@@ -172,11 +173,20 @@ router.route("/fetchAllUser").get(verifyJWT, isAdmin, fetchAllUser);
 router.route("/fetchParticularUser/:id").get(verifyJWT, isAdmin, fetchParticularUser);
 router.route("/subscription/change/date/:userId").patch(verifyJWT,isAdmin,chagneDate);
 router.route("/ptbill/change/date/:userId").patch(verifyJWT,isAdmin,changePtBillDate)
+// router.route("/fetch/ptplans/:userId").get(verifyJWT,isAdmin,fetchAllPTPlansForAParticularUser)
+router.get(
+  "/personal-training/member/:member_id/plans",
+  verifyJWT,isAdmin,fetchAllPTPlansForAParticularUser
+);
+router.patch(
+  "/personal-training/change/trainer/:member_id/:subscription_id/:trainer_id",
+  verifyJWT,isAdmin,changeTrainer
+);
 
 // personal training
 router.route("/personal-training/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, assignPT);
 router.route("/personal-training-renewal/:member_id/:trainer_id/:plan_id").post(verifyJWT, isAdmin, renewalPtSub);
-router.route("/personal-training/change/trainer/:member_id/:trainer_id").patch(verifyJWT,isAdmin,changeTrainer)
+// router.route("/personal-training/change/trainer/:member_id/:trainer_id").patch(verifyJWT,isAdmin,changeTrainer)
 router.route("/personal-training/check/self/pt/:userId").get(verifyJWT,isAdmin,checkIfTempBillExist)
 router.route("/personal-training/remove/:userId").patch(verifyJWT,isAdmin,removePt)
 

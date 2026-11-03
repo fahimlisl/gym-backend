@@ -19,6 +19,7 @@ import { TrainerCoupon } from "../models/trainercoupon.models.js"
 import { TempPtBill } from "../models/ptbill.temp.models.js";
 import { sendWhatsAppMessage } from "../service/sendWp.js";
 import { accessCookieOptions, refreshCookieOptions } from "../utils/authCookies.js";
+import mongoose from "mongoose";
 
 const registerUser = asyncHandler(async (req, res) => {
   const {
@@ -1366,72 +1367,267 @@ const changePFP = asyncHandler(async(req,res) => {
   )
 })
 
-const changeTrainer = asyncHandler(async(req,res) => {
+// lets do a little modification in here 
+const fetchAllPTPlansForAParticularUser = asyncHandler(async (req, res) => {
   const userId = req.params.member_id;
-  const trainerId = req.params.trainer_id;
-  const adminId = req.user._id;
-  // later can be required for superadmin access checking
-  if(!adminId) throw new ApiError(401,"unauthorized access.");
-  if(!userId) throw new ApiError(400,"user id must required in order to change trainer!");
-  const ptbill = await Ptbill.findOne({user:userId});
-  if(!ptbill) throw new ApiError(400,"pt plan has not been purchased yet");
-  if(ptbill?.subscription[ptbill?.subscription?.length - 1]?.status === "expired") throw new ApiError(400,"pt plan has been expired , kindly renew before proceeding.");
-  if(!ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer) throw new ApiError(400,"no trainer been assigend yet");
-  if(!trainerId) throw new ApiError(400,"kindly consider choosing a trianer!");
 
-  const existingTrainer = await Trainer.findById(ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer);
-  // we are not checkint this thing , cuz in senario if a trianer is deleted , then this could help us , not getting error as well as at the same time we can change the trianer safely
-  // if(!existingTrainer) throw new ApiError(400,"trianer not found for current personal trainer.");
-  try {
-    if(existingTrainer){
-      await Trainer.findByIdAndUpdate(ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer,
-        {
-          $pull:{
-            students:{
-              student: userId
-            }
-          }
-        }
-      )
-    }
-  } catch (error) {
-    console.log("error in change trainer controller : ",error);
+  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    throw new ApiError(400, "Invalid member ID.");
   }
-  const lastIndex = ptbill.subscription.length - 1;
-  const final = await Ptbill.findByIdAndUpdate(ptbill._id,
-    {
-      $set:{
-        [`subscription.${lastIndex}.trainer`]:trainerId,
-        [`subscription.${lastIndex}.updatedBy`]:adminId
+
+  const ptbill = await Ptbill.findOne({ user: userId })
+    .select("user subscription createdAt updatedAt")
+    .populate({
+      path: "subscription.trainer",
+      select: "fullName avatar experience",
+    });
+
+  if (!ptbill) {
+    throw new ApiError(404, "No personal training plans found for this member.");
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      ptbill,
+      "Successfully fetched all personal training plans."
+    )
+  );
+});
+
+// helper for syncing pt plans and trainer 
+const ACTIVE_PT_STATUSES = ["active", "paused", "upcoming"];
+const syncTrainerStudent = async (userId, trainerId) => {
+  if (!trainerId) return;
+
+  const hasAssignedPlan = await Ptbill.exists({
+    user: userId,
+    subscription: {
+      $elemMatch: {
+        trainer: trainerId,
+        status: { $in: ACTIVE_PT_STATUSES },
+      },
+    },
+  });
+
+  if (hasAssignedPlan) {
+    await Trainer.updateOne(
+      {
+        _id: trainerId,
+        "students.student": { $ne: userId },
+      },
+      {
+        $push: {
+          students: { student: userId },
+        },
       }
+    );
+  } else {
+    await Trainer.updateOne(
+      { _id: trainerId },
+      {
+        $pull: {
+          students: { student: userId },
+        },
+      }
+    );
+  }
+};
+
+const changeTrainer = asyncHandler(async (req, res) => {
+  const userId = req.params.member_id;
+  const subscriptionId = req.params.subscription_id;
+  const trainerId = req.params.trainer_id;
+
+  const adminId = req.user?._id;
+  console.log(req.user)
+
+  // if (!adminId) {
+  //   throw new ApiError(401, "Unauthorized access.");
+  // }
+
+  if (
+    !mongoose.Types.ObjectId.isValid(userId) ||
+    !mongoose.Types.ObjectId.isValid(subscriptionId) ||
+    !mongoose.Types.ObjectId.isValid(trainerId)
+  ) {
+    throw new ApiError(400, "Invalid member, subscription or trainer ID.");
+  }
+
+  const ptbill = await Ptbill.findOne({ user: userId });
+
+  if (!ptbill) {
+    throw new ApiError(404, "PT plan has not been purchased yet.");
+  }
+
+  // Find the exact subscription selected by the admin.
+  const selectedSubscription = ptbill.subscription.id(subscriptionId);
+
+  if (!selectedSubscription) {
+    throw new ApiError(404, "Selected PT subscription was not found.");
+  }
+
+  if (selectedSubscription.status?.toLowerCase() === "expired") {
+    throw new ApiError(
+      400,
+      "This PT plan has expired. Trainer cannot be changed."
+    );
+  }
+
+  // Validate the new trainer.
+  const newTrainer = await Trainer.findById(trainerId).select("_id");
+
+  if (!newTrainer) {
+    throw new ApiError(404, "Selected trainer was not found.");
+  }
+
+  const oldTrainerId = selectedSubscription.trainer?.toString() || null;
+  const previousUpdatedBy = selectedSubscription.updatedBy || null;
+
+  if (oldTrainerId === trainerId) {
+    throw new ApiError(400, "This trainer is already assigned to this plan.");
+  }
+
+  // Update ONLY the selected subscription.
+  const updatedBill = await Ptbill.findOneAndUpdate(
+    {
+      _id: ptbill._id,
+      "subscription._id": subscriptionId,
     },
     {
-      new:true
-    }
-  )
-  if(!final) throw new ApiError(500,"internal server error, contact administrator.");
-
-  const trainerStudentAdd = await Trainer.findByIdAndUpdate(trainerId,
-    {
-      $addToSet: {
-        students: { student: userId },
+      $set: {
+        "subscription.$.trainer": trainerId,
+        "subscription.$.updatedBy": adminId,
       },
     },
     {
       new: true,
+      runValidators: true,
     }
-  )
+  );
 
-  if(!trainerStudentAdd) throw new ApiError(500,"internal server error , trainer has been changed, failed to add studnet to trianer.")
+  if (!updatedBill) {
+    throw new ApiError(500, "Failed to update the selected PT subscription.");
+  }
 
-  return res
-  .status(200)
-  .json(new ApiResponse(
-    200,
-    {},
-    "trainer have been changed successfully."
-  ))
+  try {
+    // Synchronize the old trainer's student list.
+    if (oldTrainerId) {
+      await syncTrainerStudent(userId, oldTrainerId);
+    }
+
+    // Synchronize the new trainer's student list.
+    await syncTrainerStudent(userId, trainerId);
+
+  } catch (error) {
+    console.error("Trainer student synchronization error:", error);
+
+    // Roll back the subscription's trainer assignment.
+    await Ptbill.updateOne(
+      {
+        _id: ptbill._id,
+        "subscription._id": subscriptionId,
+      },
+      {
+        $set: {
+          "subscription.$.trainer": oldTrainerId,
+          "subscription.$.updatedBy": previousUpdatedBy,
+        },
+      }
+    );
+
+    // Try to restore both trainer student lists.
+    await Promise.allSettled([
+      ...(oldTrainerId
+        ? [syncTrainerStudent(userId, oldTrainerId)]
+        : []),
+      syncTrainerStudent(userId, trainerId),
+    ]);
+
+    throw new ApiError(
+      500,
+      "Trainer assignment could not be completed. Please try again."
+    );
+  }
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {},
+      "Trainer changed successfully for the selected PT plan."
+    )
+  );
 });
+
+
+
+// old one delete after complete checkup
+// const changeTrainer = asyncHandler(async(req,res) => {
+//   const userId = req.params.member_id;
+//   const trainerId = req.params.trainer_id;
+//   const adminId = req.user._id;
+//   // later can be required for superadmin access checking
+//   if(!adminId) throw new ApiError(401,"unauthorized access.");
+//   if(!userId) throw new ApiError(400,"user id must required in order to change trainer!");
+//   const ptbill = await Ptbill.findOne({user:userId});
+//   if(!ptbill) throw new ApiError(400,"pt plan has not been purchased yet");
+//   if(ptbill?.subscription[ptbill?.subscription?.length - 1]?.status === "expired") throw new ApiError(400,"pt plan has been expired , kindly renew before proceeding.");
+//   if(!ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer) throw new ApiError(400,"no trainer been assigend yet");
+//   if(!trainerId) throw new ApiError(400,"kindly consider choosing a trianer!");
+
+//   const existingTrainer = await Trainer.findById(ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer);
+//   // we are not checkint this thing , cuz in senario if a trianer is deleted , then this could help us , not getting error as well as at the same time we can change the trianer safely
+//   // if(!existingTrainer) throw new ApiError(400,"trianer not found for current personal trainer.");
+//   try {
+//     if(existingTrainer){
+//       await Trainer.findByIdAndUpdate(ptbill?.subscription[ptbill?.subscription?.length - 1]?.trainer,
+//         {
+//           $pull:{
+//             students:{
+//               student: userId
+//             }
+//           }
+//         }
+//       )
+//     }
+//   } catch (error) {
+//     console.log("error in change trainer controller : ",error);
+//   }
+//   const lastIndex = ptbill.subscription.length - 1;
+//   const final = await Ptbill.findByIdAndUpdate(ptbill._id,
+//     {
+//       $set:{
+//         [`subscription.${lastIndex}.trainer`]:trainerId,
+//         [`subscription.${lastIndex}.updatedBy`]:adminId
+//       }
+//     },
+//     {
+//       new:true
+//     }
+//   )
+//   if(!final) throw new ApiError(500,"internal server error, contact administrator.");
+
+//   const trainerStudentAdd = await Trainer.findByIdAndUpdate(trainerId,
+//     {
+//       $addToSet: {
+//         students: { student: userId },
+//       },
+//     },
+//     {
+//       new: true,
+//     }
+//   )
+
+//   if(!trainerStudentAdd) throw new ApiError(500,"internal server error , trainer has been changed, failed to add studnet to trianer.")
+
+//   return res
+//   .status(200)
+//   .json(new ApiResponse(
+//     200,
+//     {},
+//     "trainer have been changed successfully."
+//   ))
+// });
 
 // we don't need to change the createdAt date for susbcription main model for the first time user
 // because we are only evaluating the vlalues using our transacsction cretedAt date
@@ -1570,5 +1766,6 @@ export {
   checkIfTempBillExist,
   chagneDate,
   removePt,
-  changePtBillDate
+  changePtBillDate,
+  fetchAllPTPlansForAParticularUser
 };
